@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Object FIle Loader">
+      <UniqueIdentifier>{9905516f-6222-4adc-afa4-b16d5c99aed7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Shader">
+      <UniqueIdentifier>{acf359d0-36c3-4b3d-9243-0acb996dba4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\HLSL">
+      <UniqueIdentifier>{86975e48-7f65-4be3-951d-ef1f26dea5a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\HLSL\Ray Tracing">
+      <UniqueIdentifier>{e706d2ac-1a96-4782-b617-c85f463940cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Object File Loader">
+      <UniqueIdentifier>{0d80a199-a551-4557-8d56-27bd31819e0c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\HLSL\Ray Tracing\Radix Sort">
+      <UniqueIdentifier>{da398bd8-7193-48a5-a2dc-e7a722153ca3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\HLSL\Ray Tracing\BVH Construction">
+      <UniqueIdentifier>{1227037a-77af-49e0-8acf-59c19de73aa0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
+      <Filter>Header Files\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectFileLoader.cpp">
+      <Filter>Source Files\Object File Loader</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dx12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectFileLoader.h">
+      <Filter>Header Files\Object FIle Loader</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Header Files\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="RayTraceBVHPS.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </FxCompile>
+    <FxCompile Include="RayTraceBVHVS.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </FxCompile>
+    <FxCompile Include="MortonCodesCS.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </FxCompile>
+    <FxCompile Include="ParallelReductionCS.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </FxCompile>
+    <FxCompile Include="RadixSortCS_OLD.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </FxCompile>
+    <FxCompile Include="RadixSortController.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </FxCompile>
+    <FxCompile Include="BVHConstruct.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="RadixSortCS.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </None>
+    <None Include="RadixSortMortonCode.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </None>
+    <None Include="RadixSortP1.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </None>
+    <None Include="RadixSortP2.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </None>
+    <None Include="RadixSortGlobal.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </None>
+    <None Include="RayTraceBVHCSOLD.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </None>
+    <None Include="Test.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </None>
+    <None Include="BVHConstructCPY.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </None>
+  </ItemGroup>
+</Project>
