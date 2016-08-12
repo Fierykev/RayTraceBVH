@@ -31,12 +31,6 @@ private:
 	void moveToNextFrame();
 	void waitForGpu();
 
-	// static globals
-	static const UINT numFrames = 2;
-	static const UINT numSRVHeaps = 2;
-	static const UINT numUAVHeaps = 6;
-	static const UINT numCBVHeaps = 1;
-
 	enum ComputeShader : UINT32
 	{
 		CS_MORTON_CODES = 0,
@@ -45,6 +39,22 @@ private:
 		CS_RADIX_SORT_TEST,
 		CS_COUNT
 	};
+
+	// setup the 
+	enum BVHUAV : UINT32
+	{
+		UAV_BVHTREE = 0,
+		UAV_TRANSFER_BUFFER,
+		UAV_NUM_ONES_BUFFER,
+		UAV_RADIXI_BUFFER,
+		UAV_COUNT
+	};
+
+	// static globals
+	static const UINT numFrames = 2;
+	static const UINT numSRVHeaps = 2;
+	static const UINT numUAVHeaps = UAV_COUNT;
+	static const UINT numCBVHeaps = 1;
 
 	// buffers
 	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer, bufferCB[1];
@@ -85,6 +95,14 @@ private:
 	// model
 	ObjLoader obj;
 
+	struct NODE
+	{
+		int parent;
+		int childL, childR;
+
+		UINT code;
+	};
+
 	struct RESTART_BUFFER
 	{
 		UINT restart;
@@ -92,7 +110,7 @@ private:
 
 	struct CONSTANT_BUFFER
 	{
-		UINT numGrps;
+		UINT numGrps, numObjects;
 		XMFLOAT3 max, min;
 	};
 

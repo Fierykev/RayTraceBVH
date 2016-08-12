@@ -6,7 +6,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	// get radixi
 	getRadixi(groupThreadID, groupID);
 
-	if (groupThreadID.x == 0)
+	if (groupThreadID == 0)
 	{
 		// init to zero
 		netOnes = 0;
@@ -29,17 +29,15 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	[unroll(2)]
 	for (uint loadi = 0; loadi < 2; loadi++)
 	{
-		uint index = (groupThreadID.x << 1) + loadi;
+		uint index = (groupThreadID << 1) + loadi;
 		uint globalIndex = (threadID.x << 1) + loadi;
 
 		uint tmpData;
 
-		if (radixi == 0)
-			tmpData = codes[globalIndex];
-		else if (radixi & 0x1)
-			tmpData = codes[sortedIndexBackBuffer[globalIndex]];
+		if (radixi & 0x1)
+			tmpData = BVHTree[globalIndex + numObjects].code;
 		else
-			tmpData = codes[sortedIndex[globalIndex]];
+			tmpData = BVHTree[globalIndex].code;
 
 		uint tmpPositionNotPresent =
 			transferBuffer[globalIndex];
@@ -56,12 +54,10 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 
 		uint lookupIndex = groupID.x * DATA_SIZE + index;
 
-		if (radixi == 0) // startup
-			sortedIndexBackBuffer[sIndex] = lookupIndex;
-		else if (radixi & 0x1) // odd
-			sortedIndex[sIndex] = sortedIndexBackBuffer[lookupIndex];
+		if (radixi & 0x1) // odd
+			BVHTree[sIndex].code = BVHTree[lookupIndex + numObjects].code;
 		else // even
-			sortedIndexBackBuffer[sIndex] = sortedIndex[lookupIndex];
+			BVHTree[sIndex + numObjects].code = BVHTree[lookupIndex].code;
 	}
 
 	// update the radixi

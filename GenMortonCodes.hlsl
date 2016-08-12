@@ -91,9 +91,9 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 			rand(rand(rand(pointData))) / rand(pointData)
 			);
 
-		codes[(threadID.x << 1) + loadi] = calcMortonCode(tmpPoint);
+		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode(tmpPoint);
 #else
-		codes[(threadID.x << 1) + loadi] = calcMortonCode((avg - min) / (max - min));
+		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode((avg - min) / (max - min));
 #endif
 	}
 }

@@ -63,18 +63,16 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	[unroll(2)]
 	for (uint loadi = 0; loadi < 2; loadi++)
 	{
-		uint index = (groupThreadID.x << 1) + loadi;
+		uint index = (groupThreadID << 1) + loadi;
 
 		uint globalIndex = (threadID.x << 1) + loadi;
 
 		uint tmpData;
 
-		if (radixi == 0)
-			tmpData = codes[globalIndex];
-		else if (radixi & 0x1)
-			tmpData = codes[sortedIndexBackBuffer[globalIndex]];
+		if (radixi & 0x1)
+			tmpData = BVHTree[globalIndex + numObjects].code;
 		else
-			tmpData = codes[sortedIndex[globalIndex]];
+			tmpData = BVHTree[globalIndex].code;
 
 		// store the inverted version of the important bit
 		positionNotPresent[index] = !(tmpData & (1 << radixi));
@@ -84,21 +82,21 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	GroupMemoryBarrierWithGroupSync();
 	
 	// set the one's count
-	if (groupThreadID.x == 0)
+	if (groupThreadID == 0)
 		totalOnes = positionNotPresent[DATA_SIZE - 1];
 
 	// run a prefix sum
-	prefixSum(groupThreadID.x);
+	prefixSum(groupThreadID);
 
 	// add the number of ones in this group to a global buffer
-	if (groupThreadID.x == 0)
+	if (groupThreadID == 0)
 		numOnesBuffer[groupID.x] = (totalOnes += positionNotPresent[DATA_SIZE - 1]);
 
 	// output the data
 	[unroll(2)]
 	for (loadi = 0; loadi < 2; loadi++)
 	{
-		uint index = (groupThreadID.x << 1) + loadi;
+		uint index = (groupThreadID << 1) + loadi;
 		uint globalIndex = (threadID.x << 1) + loadi;
 
 		transferBuffer[globalIndex] = positionNotPresent[index];

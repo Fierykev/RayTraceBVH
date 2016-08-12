@@ -6,15 +6,17 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 {
 	if (threadID.x == 0)
 	{
-		numOnesBuffer[0] = 1000;
+		uint offset = 0;
+
+		numOnesBuffer[0] = RS_NO_ERROR;
 
 		uint greaterCheck = 0;
 		
 		for (uint i = 1; i < DATA_SIZE * numGrps; i++)
 		{
-			greaterCheck |= codes[sortedIndexBackBuffer[i - 1]] < codes[sortedIndexBackBuffer[i]];
+			greaterCheck |= BVHTree[i - 1].code < BVHTree[i].code;
 			
-			if (codes[sortedIndexBackBuffer[i - 1]] > codes[sortedIndexBackBuffer[i]])
+			if (BVHTree[i - 1 + offset].code > BVHTree[i + offset].code)
 			{
 				numOnesBuffer[0] = RS_ERROR_1;
 

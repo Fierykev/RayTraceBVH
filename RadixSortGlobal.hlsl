@@ -23,19 +23,17 @@ struct VERTEX
 
 cbuffer CONSTANT_BUFFER : register(b0)
 {
-	uint numGrps;
+	uint numGrps, numObjects;
 	float3 max, min;
 };
 
 StructuredBuffer<VERTEX> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
 
-RWStructuredBuffer<uint> codes : register(u0);
-RWStructuredBuffer<uint> sortedIndex : register(u1);
-RWStructuredBuffer<uint> sortedIndexBackBuffer : register(u2);
-RWStructuredBuffer<uint> transferBuffer : register(u3);
-RWStructuredBuffer<uint> numOnesBuffer : register(u4);
-RWStructuredBuffer<uint> radixiBuffer : register(u5);
+RWStructuredBuffer<NODE> BVHTree : register(u0);
+RWStructuredBuffer<uint> transferBuffer : register(u1);
+RWStructuredBuffer<uint> numOnesBuffer : register(u2);
+RWStructuredBuffer<uint> radixiBuffer : register(u3);
 
 //groupshared uint phase;
 groupshared uint radixi;

@@ -198,7 +198,7 @@ void Graphics::loadAssets()
 
 	// setup buffers for shaders
 	const UINT numThreads = 128;
-	/*const UINT */numGrps = (UINT) ceil(obj.getNumIndices() / (double)DATA_SIZE) - 1;
+	/*const UINT */numGrps = (UINT) ceil(obj.getNumIndices() / (double)DATA_SIZE);
 	
 	// load the shaders
 	string dataVS, dataPS, dataCS[CS_COUNT];
@@ -310,10 +310,10 @@ void Graphics::loadAssets()
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps * DATA_SIZE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(NODE) * numGrps * DATA_SIZE * 2, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
-		IID_PPV_ARGS(&bufferCS[0])));
+		IID_PPV_ARGS(&bufferCS[UAV_BVHTREE])));
 
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -321,7 +321,7 @@ void Graphics::loadAssets()
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps * DATA_SIZE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
-		IID_PPV_ARGS(&bufferCS[1])));
+		IID_PPV_ARGS(&bufferCS[UAV_TRANSFER_BUFFER])));
 
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -329,15 +329,7 @@ void Graphics::loadAssets()
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps * DATA_SIZE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
-		IID_PPV_ARGS(&bufferCS[2])));
-
-	ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps * DATA_SIZE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		nullptr,
-		IID_PPV_ARGS(&bufferCS[3])));
+		IID_PPV_ARGS(&bufferCS[UAV_NUM_ONES_BUFFER])));
 
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -345,17 +337,7 @@ void Graphics::loadAssets()
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
-		IID_PPV_ARGS(&bufferCS[4])));
-
-	// radixi
-
-	ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		nullptr,
-		IID_PPV_ARGS(&bufferCS[5])));
+		IID_PPV_ARGS(&bufferCS[UAV_RADIXI_BUFFER])));
 
 	// zero bool buffer
 	
@@ -426,6 +408,7 @@ void Graphics::loadAssets()
 	// map resources for upload
 	bufferCB[0]->Map(0, &readRange, (void**)&bufferData);
 	bufferData->numGrps = numGrps;
+	bufferData->numObjects = numGrps * DATA_SIZE;
 	bufferData->max = XMFLOAT3(36, 42, 44);
 	bufferData->min = XMFLOAT3(-51, -2, -43);
 	bufferCB[0]->Unmap(0, nullptr);
@@ -443,27 +426,20 @@ void Graphics::loadAssets()
 
 	// setup buffer (uav)
 
-	// codes
+	// BVH tree
 	
-	uavDesc.Buffer.NumElements = numGrps * DATA_SIZE;
-	uavDesc.Buffer.StructureByteStride = sizeof(unsigned int);
+	uavDesc.Buffer.NumElements = numGrps * DATA_SIZE * 2;
+	uavDesc.Buffer.StructureByteStride = sizeof(NODE);
 
-	device->CreateUnorderedAccessView(bufferCS[0].Get(), nullptr, &uavDesc, uavHandle0);
-
-	// sorted index
-
-	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[1].Get(), nullptr, &uavDesc, uavHandle0);
-
-	// sorted index back buffer
-
-	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[2].Get(), nullptr, &uavDesc, uavHandle0);
+	device->CreateUnorderedAccessView(bufferCS[UAV_BVHTREE].Get(), nullptr, &uavDesc, uavHandle0);
 
 	// transfer buffer
 
+	uavDesc.Buffer.NumElements = numGrps * DATA_SIZE;
+	uavDesc.Buffer.StructureByteStride = sizeof(unsigned int);
+
 	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[3].Get(), nullptr, &uavDesc, uavHandle0);
+	device->CreateUnorderedAccessView(bufferCS[UAV_TRANSFER_BUFFER].Get(), nullptr, &uavDesc, uavHandle0);
 	
 	// one's buffer (used for sorting)
 
@@ -471,7 +447,7 @@ void Graphics::loadAssets()
 	uavDesc.Buffer.StructureByteStride = sizeof(unsigned int);
 
 	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[4].Get(), nullptr, &uavDesc, uavHandle0);
+	device->CreateUnorderedAccessView(bufferCS[UAV_NUM_ONES_BUFFER].Get(), nullptr, &uavDesc, uavHandle0);
 	
 	// radixi
 
@@ -479,7 +455,7 @@ void Graphics::loadAssets()
 	uavDesc.Buffer.StructureByteStride = sizeof(unsigned int);
 
 	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[5].Get(), nullptr, &uavDesc, uavHandle0);
+	device->CreateUnorderedAccessView(bufferCS[UAV_RADIXI_BUFFER].Get(), nullptr, &uavDesc, uavHandle0);
 
 	// close the command list until things are added
 
@@ -547,28 +523,28 @@ void Graphics::computeBVH()
 
 	// morton code gen
 
+	// reset to start over
+	pCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
+
 	pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
 
-	// reset to start over
-	pCommandList->CopyBufferRegion(bufferCS[5].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
+	// barrier for morton codes and zero buffer
+	const CD3DX12_RESOURCE_BARRIER mortonBarrier[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()), // bvh tree
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()) // radixi
+	};
 
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferCS[5].Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+	pCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
 	
 	// barrier for p1
 	const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[3].Get()), // numOnesBuffer
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[4].Get()) // transferBuffer
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_NUM_ONES_BUFFER].Get()), // numOnesBuffer
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()) // transferBuffer
 	};
 
-	const CD3DX12_RESOURCE_BARRIER p2BarrierEven[] = {
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[3].Get()), // radixi
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[2].Get()) // sortedIndexBackBuffer
-	};
-
-	const CD3DX12_RESOURCE_BARRIER p2BarrierOdd[] = {
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[3].Get()), // radixi
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[1].Get()) // sortedIndex
+	const CD3DX12_RESOURCE_BARRIER p2Barrier[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()), // radixi
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
 	};
 
 	// run the sort
@@ -579,10 +555,9 @@ void Graphics::computeBVH()
 
 		// launch threads
 		pCommandList->Dispatch(numGrps, 1, 1);
-
+		
 		// wait for UAV's to write
-		pCommandList->ResourceBarrier(_countof(p1Barrier),
-			p1Barrier);
+		pCommandList->ResourceBarrier(_countof(p1Barrier), p1Barrier);
 
 		// set state to p2
 		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
@@ -591,12 +566,7 @@ void Graphics::computeBVH()
 		pCommandList->Dispatch(numGrps, 1, 1);
 
 		// wait for UAV's to write
-		if (i & 0x1) // odd
-			pCommandList->ResourceBarrier(_countof(p2BarrierOdd),
-				p2BarrierOdd);
-		else // even
-			pCommandList->ResourceBarrier(_countof(p2BarrierEven),
-				p2BarrierEven);
+		pCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
 	}
 
 	// sync EVERYTHING

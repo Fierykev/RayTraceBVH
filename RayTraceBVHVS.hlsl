@@ -1,3 +1,4 @@
+#include <RadixSortGlobal.hlsl>
 #include <ErrorGlobal.hlsl>
 
 /*cbuffer WorldBuffer : register(b0)
@@ -20,15 +21,6 @@ struct PSINPUT
 	float4 worldpos : TEXCOORD1;
 };
 
-struct VERTEX
-{
-	float3 position;
-	float3 normal;
-	float2 texcoord;
-};
-
-RWStructuredBuffer<uint> numOnesBuffer : register(u4);
-
 PSINPUT main(VSINPUT In)
 {
 	PSINPUT O;
@@ -38,7 +30,7 @@ PSINPUT main(VSINPUT In)
 	worldViewProjection2[2] = float4(0, .0995037, .995037, -100.499);
 	worldViewProjection2[3] = float4(0, 0, 0, 1);
 	
-	if (numOnesBuffer[0] == RS_ERROR_1)
+	if (numOnesBuffer[0] != RS_NO_ERROR)
 		In.position = float4(0, 0, 0, 0);
 	O.position = mul(In.position, worldViewProjection2);
 

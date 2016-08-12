@@ -91,9 +91,6 @@
     <FxCompile Include="ParallelReductionCS.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
     </FxCompile>
-    <FxCompile Include="BVHConstruct.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
-    </FxCompile>
     <FxCompile Include="RadixSortP2.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
@@ -103,11 +100,9 @@
     <FxCompile Include="GenMortonCodes.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
+    <FxCompile Include="RadixSortP1.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="RadixSortP1.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </None>
     <None Include="RadixSortGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </None>
@@ -116,6 +111,9 @@
     </None>
     <None Include="ErrorGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </None>
+    <None Include="BVHConstruct.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
     </None>
   </ItemGroup>
 </Project>
