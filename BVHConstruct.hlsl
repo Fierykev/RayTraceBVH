@@ -1,4 +1,13 @@
-#define NUM_THREADS 32
+#include <BVHGlobal.hlsl>
+
+/*
+ Since BVH construction only multiplies by +/- 1 (direction), this macro computes the result
+ of the multiplication using bitwise operations rather than multiplication.
+ Please note that it is assumed that multiplication takes longer than the below
+ operations.
+ */
+
+#define MULTIPLY_BY_POSNEG(x, s) ((x & ~(s & (s >> 1))) | ((~x + 1) & (s & (s >> 1))))
 
 struct NODE
 {
@@ -20,15 +29,19 @@ cbuffer CONSTANT_BUFFER : register(b0)
 	int numObjects;
 };
 
-StructuredBuffer<VERTEX> verts : register(t0);
-StructuredBuffer<uint> indices : register(t1);
-StructuredBuffer<uint> restart : register(t2);
+/*
+DeBruijin lookup table.
+The table cannot be inlined in the method
+because it takes up extra local space.
+*/
 
-RWStructuredBuffer<uint> codes : register(u0);
-RWStructuredBuffer<uint> sortedIndex : register(u1);
-RWStructuredBuffer<NODE> nodes : register(u2);
-// size of number of objects = leaf node
-// size of number of objects - 1 = internal nodes
+static const int deBruijinLookup[] =
+{
+	0, 31, 9, 30, 3, 8, 13, 29, 2,
+	5, 7, 21, 12, 24, 28, 19,
+	1, 10, 4, 14, 6, 22, 25,
+	20, 11, 15, 23, 26, 16, 27, 17, 18
+};
 
 /*
 Gets number of leeading zeros by representing them
@@ -36,19 +49,9 @@ as ones pushed to the right.  Does not give meaningful
 number but the relative output is correct.
 */
 
-int leadingZeroRel(uint d1, uint d2)
+int leadingPrefix(uint d1, uint d2)
 {
-	const int deBruijinLookup[] =
-	{
-		0, 31, 9, 30, 3, 8, 13, 29, 2,
-		5, 7, 21, 12, 24, 28, 19,
-		1, 10, 4, 14, 6, 22, 25,
-		20, 11, 15, 23, 26, 16, 27, 17, 18
-	};
-
 	uint data = d1 ^ d2;
-
-	// remove non-leading zeros
 
 	data |= data >> 1;
 	data |= data >> 2;
@@ -57,18 +60,18 @@ int leadingZeroRel(uint d1, uint d2)
 	data |= data >> 16;
 	data++;
 
+	// the below code will be flattened on optimization (no branch)
 	return data ? deBruijinLookup[data * 0x076be629 >> 27] : 32;
 }
 
 /*
-Same as leadingZeroRel but does bounds checks.
+Same as leadingPrefix but does bounds checks.
 */
 
-int leadingZeroCode(uint d1, int index)
+int leadingPrefixBounds(uint d1, int index)
 {
-	//return leadingZeroRel(d1, codes[clamp(index, 0, numObjects - 1)]);
-
-	return (0 <= index && index < numObjects) ? leadingZeroRel(d1, nodes[index].code) : -1;
+	// the below code will be flattened on optimization (no branch)
+	return (0 <= index && index < numObjects) ? leadingPrefix(d1, nodes[index].code) : -1;
 }
 
 
@@ -81,17 +84,18 @@ int2 getChildren(int index)
 	uint codeCurrent = nodes[index].code;
 
 	// get range direction
-	int direction = sign(leadingZeroCode(codeCurrent, index + 1)
-		- leadingZeroCode(codeCurrent, index - 1));
+	int direction = sign(leadingPrefixBounds(codeCurrent, index + 1)
+		- leadingPrefixBounds(codeCurrent, index - 1));
 
 	// get upper bound of length range
-	int minLeadingZero = leadingZeroCode(codeCurrent, index - direction);
+	int minLeadingZero = leadingPrefixBounds(codeCurrent, index - direction);
 	uint boundLen = 2;
 
 	// TODO: change back to multiply by 4
+	[loop]
 	for (;
-	minLeadingZero < leadingZeroCode(
-		codeCurrent, index + boundLen * direction);
+	minLeadingZero < leadingPrefixBounds(
+		codeCurrent, index + MULTIPLY_BY_POSNEG(boundLen, direction));
 	boundLen <<= 1) {
 	}
 
@@ -100,37 +104,37 @@ int2 getChildren(int index)
 
 	int deltaSum = 0;
 
+	[loop]
 	do
 	{
 		delta = (delta + 1) >> 1;
 
 		if (minLeadingZero <
-			leadingZeroCode(
-				codeCurrent, index + (deltaSum + delta) * direction))
+			leadingPrefixBounds(
+				codeCurrent, index + MULTIPLY_BY_POSNEG((deltaSum + delta), direction)))
 			deltaSum += delta;
 	} while (1 < delta);
 
-	int boundStart = index + deltaSum * direction;
-
-	//return int2(lowerBound, upperBound);
+	int boundStart = index + MULTIPLY_BY_POSNEG(deltaSum, direction);
 
 	// find slice range
-	int leadingZero = leadingZeroCode(codeCurrent, boundStart);
+	int leadingZero = leadingPrefixBounds(codeCurrent, boundStart);
 
 	delta = deltaSum;
 	int tmp = 0;
 
+	[loop]
 	do
 	{
 		delta = (delta + 1) >> 1;
 
 		if (leadingZero <
-			leadingZeroCode(codeCurrent, index + (tmp + delta) * direction))
+			leadingPrefixBounds(codeCurrent, index + MULTIPLY_BY_POSNEG((tmp + delta), direction)))
 			tmp += delta;
 	} while (1 < delta);
 
 	// TODO: remove min and multiplication
-	int location = index + tmp * direction + min(direction, 0);
+	int location = index + MULTIPLY_BY_POSNEG(tmp, direction) + min(direction, 0);
 
 	int2 children;
 
@@ -151,9 +155,8 @@ int2 getChildren(int index)
 void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
 	// load in the leaf nodes (load factor of 2)
-	// TODO: add this to radix sort
 	for (uint loadi = 0; loadi < 2; loadi++)
-		nodes[threadID.x * 2 + loadi].code = sortedIndex[threadID.x * 2 + loadi];
+		nodes[(threadID.x << 1) + loadi].code = sortedIndex[(threadID.x << 1) + loadi];
 
 	DeviceMemoryBarrierWithGroupSync();
 

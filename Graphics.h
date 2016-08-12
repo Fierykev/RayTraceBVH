@@ -33,12 +33,21 @@ private:
 
 	// static globals
 	static const UINT numFrames = 2;
-	static const UINT numSRVHeaps = 3;
-	static const UINT numUAVHeaps = 7;
+	static const UINT numSRVHeaps = 2;
+	static const UINT numUAVHeaps = 6;
 	static const UINT numCBVHeaps = 1;
 
+	enum ComputeShader : UINT32
+	{
+		CS_MORTON_CODES = 0,
+		CS_RADIX_SORT_P1,
+		CS_RADIX_SORT_P2,
+		CS_RADIX_SORT_TEST,
+		CS_COUNT
+	};
+
 	// buffers
-	ComPtr<ID3D12Resource> bufferSRVCS[1], bufferCS[numUAVHeaps], zeroBuffer, oneBuffer, debugBuffer, bufferCB[1];
+	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer, bufferCB[1];
 
 	// fences
 	UINT frameIndex;
@@ -54,7 +63,7 @@ private:
 	ComPtr<ID3D12PipelineState> pipelineState;
 	ComPtr<ID3D12PipelineState> computeStatePR;
 	ComPtr<ID3D12PipelineState> computeStateMC;
-	ComPtr<ID3D12PipelineState> computeStateRS;
+	ComPtr<ID3D12PipelineState> computeStateCS[CS_COUNT];
 	ComPtr<ID3D12GraphicsCommandList> commandList;
 	ComPtr<IDXGISwapChain3> swapChain;
 

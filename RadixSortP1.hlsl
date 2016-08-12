@@ -1,6 +1,3 @@
-#ifndef RADIX_SORT_P1
-#define RADIX_SORT_P1
-
 #include <RadixSortGlobal.hlsl>
 
 /**************************************
@@ -51,8 +48,12 @@ void prefixSum(uint ID)
 	}
 }
 
-void radixSortP1(uint3 threadID, uint3 groupThreadID, uint3 groupID)
+[numthreads(NUM_THREADS, 1, 1)]
+void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
+	// get radixi
+	getRadixi(groupThreadID, groupID);
+
 	/***********************************************
 	Radix Sort P1
 	***********************************************/
@@ -103,5 +104,3 @@ void radixSortP1(uint3 threadID, uint3 groupThreadID, uint3 groupID)
 		transferBuffer[globalIndex] = positionNotPresent[index];
 	}
 }
-
-#endif

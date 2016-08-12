@@ -201,7 +201,7 @@ void Graphics::loadAssets()
 	/*const UINT */numGrps = (UINT) ceil(obj.getNumIndices() / (double)DATA_SIZE) - 1;
 	
 	// load the shaders
-	string dataVS, dataPS, dataPRCS, dataMCCS, dataRSCS;
+	string dataVS, dataPS, dataCS[CS_COUNT];
 
 	// file locations of each shader
 #ifdef _DEBUG
@@ -209,12 +209,14 @@ void Graphics::loadAssets()
 	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceBVHVS.cso", dataVS));
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceBVHPS.cso", dataPS));
-	
-	ThrowIfFailed(ReadCSO("../x64/Debug/ParallelReductionCS.cso", dataPRCS));
 
-	ThrowIfFailed(ReadCSO("../x64/Debug/MortonCodesCS.cso", dataMCCS));
+	ThrowIfFailed(ReadCSO("../x64/Debug/GenMortonCodes.cso", dataCS[CS_MORTON_CODES]));
 
-	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortController.cso", dataRSCS)); //RadixSortController.cso", dataRSCS));
+	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortP1.cso", dataCS[CS_RADIX_SORT_P1]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortP2.cso", dataCS[CS_RADIX_SORT_P2]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortTest.cso", dataCS[CS_RADIX_SORT_TEST]));
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
@@ -291,25 +293,17 @@ void Graphics::loadAssets()
 	D3D12_COMPUTE_PIPELINE_STATE_DESC computePsoDesc = {};
 
 	computePsoDesc.pRootSignature = computeRootSignature.Get();
-	computePsoDesc.CS = { reinterpret_cast<UINT8*>((void*)dataRSCS.c_str()), dataRSCS.length() };
 
-	ThrowIfFailed(device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&computeStateRS)));
+	for (unsigned int i = 0; i < CS_COUNT; i++)
+	{
+		computePsoDesc.CS = { reinterpret_cast<UINT8*>((void*)dataCS[i].c_str()), dataCS[i].length() };
+
+		ThrowIfFailed(device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&computeStateCS[i])));
+	}
 
 	// create command list
 
 	ThrowIfFailed(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[frameIndex].Get(), nullptr, IID_PPV_ARGS(&commandList)));
-	
-	// init data
-
-	// SRV
-	
-	ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(UINT)),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&bufferSRVCS[0])));
 		
 	// UAV
 	
@@ -352,16 +346,6 @@ void Graphics::loadAssets()
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
 		IID_PPV_ARGS(&bufferCS[4])));
-		
-	// phase
-
-	ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		nullptr,
-		IID_PPV_ARGS(&bufferCS[5])));
 
 	// radixi
 
@@ -371,37 +355,17 @@ void Graphics::loadAssets()
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
-		IID_PPV_ARGS(&bufferCS[6])));
+		IID_PPV_ARGS(&bufferCS[5])));
 
 	// zero bool buffer
 	
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(UINT)),
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(UINT) * numGrps),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&zeroBuffer)));
-	
-	// one bool buffer
-
-	ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(UINT)),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&oneBuffer)));
-
-	// debug bool buffer
-
-	ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(UINT)),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&debugBuffer)));	
 		
 	// constant buffer
 
@@ -448,20 +412,8 @@ void Graphics::loadAssets()
 	UINT* boolBufferData;
 
 	zeroBuffer->Map(0, &readRange, reinterpret_cast<void**>(&boolBufferData));
-	ZeroMemory(boolBufferData, sizeof(UINT));
+	ZeroMemory(boolBufferData, sizeof(UINT) * numGrps);
 	zeroBuffer->Unmap(0, nullptr);
-	
-	// set up one buffer
-
-	oneBuffer->Map(0, &readRange, (void**)&boolBufferData);
-	*boolBufferData = 1;
-	oneBuffer->Unmap(0, nullptr);
-
-	// set up debug buffer
-
-	debugBuffer->Map(0, &readRange, (void**)&boolBufferData);
-	*boolBufferData = 2;
-	debugBuffer->Unmap(0, nullptr);
 	
 	// set up the constant buffer
 
@@ -489,14 +441,6 @@ void Graphics::loadAssets()
 	srvHandle0.Offset(1, csuDescriptorSize);
 	device->CreateShaderResourceView(obj.getIndexMappedBuffer(), &srvDesc, srvHandle0);
 
-	// setup restart var
-	
-	srvDesc.Buffer.NumElements = 1;
-	srvDesc.Buffer.StructureByteStride = sizeof(unsigned int);
-
-	srvHandle0.Offset(1, csuDescriptorSize);
-	device->CreateShaderResourceView(bufferSRVCS[0].Get(), &srvDesc, srvHandle0);
-	
 	// setup buffer (uav)
 
 	// codes
@@ -529,21 +473,13 @@ void Graphics::loadAssets()
 	uavHandle0.Offset(1, csuDescriptorSize);
 	device->CreateUnorderedAccessView(bufferCS[4].Get(), nullptr, &uavDesc, uavHandle0);
 	
-	// phase
-
-	uavDesc.Buffer.NumElements = numGrps;
-	uavDesc.Buffer.StructureByteStride = sizeof(unsigned int);
-
-	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[5].Get(), nullptr, &uavDesc, uavHandle0);
-	
 	// radixi
 
 	uavDesc.Buffer.NumElements = numGrps;
 	uavDesc.Buffer.StructureByteStride = sizeof(unsigned int);
 
 	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[6].Get(), nullptr, &uavDesc, uavHandle0);
+	device->CreateUnorderedAccessView(bufferCS[5].Get(), nullptr, &uavDesc, uavHandle0);
 
 	// close the command list until things are added
 
@@ -590,7 +526,7 @@ void Graphics::computeBVH()
 	// set the shader
 	ID3D12GraphicsCommandList* pCommandList = computeCommandList.Get();
 	
-	pCommandList->SetPipelineState(computeStateRS.Get());
+	pCommandList->SetPipelineState(computeStateCS[CS_MORTON_CODES].Get());
 	pCommandList->SetComputeRootSignature(computeRootSignature.Get());
 
 	// set constant buffer
@@ -611,55 +547,66 @@ void Graphics::computeBVH()
 
 	// morton code gen
 
-	// reset to start over
-	pCommandList->CopyBufferRegion(bufferSRVCS[0].Get(), 0, oneBuffer.Get(), 0, sizeof(UINT));
-
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferSRVCS[0].Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
-
 	pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
 
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferSRVCS[0].Get(),
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
+	// reset to start over
+	pCommandList->CopyBufferRegion(bufferCS[5].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
 
-	// turn off start over
-	pCommandList->CopyBufferRegion(bufferSRVCS[0].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT));
-
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferSRVCS[0].Get(),
+	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferCS[5].Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
 	
-	// barriers for radix sort
-	const CD3DX12_RESOURCE_BARRIER radixSortBarrier[] = {
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[5].Get()), //phase
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[6].Get()) // radixi
+	// barrier for p1
+	const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[3].Get()), // numOnesBuffer
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[4].Get()) // transferBuffer
+	};
+
+	const CD3DX12_RESOURCE_BARRIER p2BarrierEven[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[3].Get()), // radixi
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[2].Get()) // sortedIndexBackBuffer
+	};
+
+	const CD3DX12_RESOURCE_BARRIER p2BarrierOdd[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[3].Get()), // radixi
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[1].Get()) // sortedIndex
 	};
 
 	// run the sort
-	for (unsigned int i = 0; i < 32 * 2; i++)
+	for (unsigned int i = 0; i < 32; i++)
 	{
-		// phase
+		// set state to p1
+		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P1].Get());
+
+		// launch threads
 		pCommandList->Dispatch(numGrps, 1, 1);
 
 		// wait for UAV's to write
-		pCommandList->ResourceBarrier(_countof(radixSortBarrier),
-			radixSortBarrier);
+		pCommandList->ResourceBarrier(_countof(p1Barrier),
+			p1Barrier);
+
+		// set state to p2
+		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
+
+		// launch threads
+		pCommandList->Dispatch(numGrps, 1, 1);
+
+		// wait for UAV's to write
+		if (i & 0x1) // odd
+			pCommandList->ResourceBarrier(_countof(p2BarrierOdd),
+				p2BarrierOdd);
+		else // even
+			pCommandList->ResourceBarrier(_countof(p2BarrierEven),
+				p2BarrierEven);
 	}
+
+	// sync EVERYTHING
 
 	pCommandList->ResourceBarrier(1,
 		&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
 
 	// run debug (TMP)
 
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferSRVCS[0].Get(),
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
-
-	// turn on debug
-	pCommandList->CopyBufferRegion(bufferSRVCS[0].Get(), 0, debugBuffer.Get(), 0, sizeof(UINT));
-	//pCommandList->CopyBufferRegion(bufferSRVCS[0].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT));
-
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferSRVCS[0].Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
-	
+	pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());	
 	pCommandList->Dispatch(1, 1, 1);
 	
 	// Close and execute the command list.
@@ -735,7 +682,7 @@ void Graphics::populateCommandList()
 	commandList->IASetVertexBuffers(0, 1, obj.getVertexBuffer());
 	commandList->IASetIndexBuffer(obj.getIndexBuffer());
 	commandList->DrawIndexedInstanced((UINT)obj.getNumIndices(), 1, 0, 0, 0);
-	commandList->
+	
 	// do not present the back buffer
 
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget[frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));

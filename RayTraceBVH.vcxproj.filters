@@ -91,40 +91,31 @@
     <FxCompile Include="ParallelReductionCS.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
     </FxCompile>
-    <FxCompile Include="RadixSortCS_OLD.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing</Filter>
-    </FxCompile>
-    <FxCompile Include="RadixSortController.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </FxCompile>
     <FxCompile Include="BVHConstruct.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
     </FxCompile>
+    <FxCompile Include="RadixSortP2.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </FxCompile>
+    <FxCompile Include="RadixSortTest.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </FxCompile>
+    <FxCompile Include="GenMortonCodes.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="RadixSortCS.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </None>
-    <None Include="RadixSortMortonCode.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </None>
     <None Include="RadixSortP1.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </None>
-    <None Include="RadixSortP2.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </None>
     <None Include="RadixSortGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </None>
-    <None Include="RayTraceBVHCSOLD.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </None>
-    <None Include="Test.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing</Filter>
-    </None>
     <None Include="BVHConstructCPY.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </None>
+    <None Include="ErrorGlobal.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
     </None>
   </ItemGroup>
 </Project>

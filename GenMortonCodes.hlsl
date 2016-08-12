@@ -1,6 +1,3 @@
-#ifndef RADIX_SORT_MORTON_CODE
-#define RADIX_SORT_MORTON_CODE
-
 #include <RadixSortGlobal.hlsl>
 
 /**************************************
@@ -61,7 +58,8 @@ uint rand(uint lfsr)
 }
 #endif
 
-void radixSortMortonCode(uint3 threadID, uint3 groupThreadID, uint3 groupID)
+[numthreads(NUM_THREADS, 1, 1)]
+void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
 	/***********************************************
 	Generate the Morton Codes (load factor of 2)
@@ -99,5 +97,3 @@ void radixSortMortonCode(uint3 threadID, uint3 groupThreadID, uint3 groupID)
 #endif
 	}
 }
-
-#endif

@@ -1,10 +1,11 @@
-#ifndef RADIX_SORT_P2
-#define RADIX_SORT_P2
-
 #include <RadixSortGlobal.hlsl>
 
-void radixSortP2(uint3 threadID, uint3 groupThreadID, uint3 groupID)
+[numthreads(NUM_THREADS, 1, 1)]
+void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
+	// get radixi
+	getRadixi(groupThreadID, groupID);
+
 	if (groupThreadID.x == 0)
 	{
 		// init to zero
@@ -62,6 +63,7 @@ void radixSortP2(uint3 threadID, uint3 groupThreadID, uint3 groupID)
 		else // even
 			sortedIndexBackBuffer[sIndex] = sortedIndex[lookupIndex];
 	}
-}
 
-#endif
+	// update the radixi
+	incRadixi(groupThreadID, groupID);
+}
