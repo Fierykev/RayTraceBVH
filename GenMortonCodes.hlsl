@@ -34,14 +34,9 @@ uint calcMortonCode(in float3 p)
 	{
 		// change to base .5
 		p[i] *= 1024.f;
-		// TODO: change to clamp
-		// check if too low
-		if (p[i] < 0.f)
-			p[i] = 0.f;
-
-		// check if too high
-		if (p[i] >= 1024.f)
-			p[i] = 1023.f;
+		
+		// clamp between [0, 1024)
+		p[i] = clamp(p[i], 0, 1023);
 
 		code[i] = bitTwiddling(p[i]);
 	}
@@ -93,7 +88,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 
 		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode(tmpPoint);
 #else
-		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode((avg - min) / (max - min));
+		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode((avg - sceneBBMin) / (sceneBBMax - sceneBBMin));
 #endif
 	}
 }

@@ -24,7 +24,7 @@ struct VERTEX
 cbuffer CONSTANT_BUFFER : register(b0)
 {
 	uint numGrps, numObjects;
-	float3 max, min;
+	float3 sceneBBMin, sceneBBMax;
 };
 
 StructuredBuffer<VERTEX> verts : register(t0);

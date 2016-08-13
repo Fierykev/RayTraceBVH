@@ -7,11 +7,14 @@
 
 // TMP
 #include <iostream>
+#include <ctime>
 
 #define DATA_SIZE 256
 
 // TMP
 UINT numGrps;
+std::clock_t start;
+double fps = 0, frames = 0;
 
 Graphics::Graphics(std::wstring title, unsigned int width, unsigned int height)
 	: Manager(title, width, height),
@@ -45,6 +48,17 @@ void Graphics::onUpdate()
 
 void Graphics::onRender()
 {
+	double delta = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+
+	if (delta > 1.0)
+	{
+		fps = frames / delta;
+
+		frames = 0;
+
+		start = std::clock();
+	}
+
 	// record the render commands
 
 	populateCommandList();
@@ -57,6 +71,11 @@ void Graphics::onRender()
 	// show the frame
 
 	ThrowIfFailed(swapChain->Present(1, 0));
+
+	if (frames == 0)
+		std::cout << "FPS: " << fps << '\n';
+
+	frames++;
 
 	// go to the next frame
 
@@ -217,6 +236,10 @@ void Graphics::loadAssets()
 	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortP2.cso", dataCS[CS_RADIX_SORT_P2]));
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortTest.cso", dataCS[CS_RADIX_SORT_TEST]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstruct.cso", dataCS[CS_BVH_CONSTRUCTION]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstructTest.cso", dataCS[CS_BVH_CONSTRUCTION_TEST]));
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
@@ -226,7 +249,15 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Release/RayTraceBVHPS.cso", dataPS));
 
-	ThrowIfFailed(ReadCSO("../x64/Release/RadixSortController.cso", dataRSCS));
+	ThrowIfFailed(ReadCSO("../x64/Release/GenMortonCodes.cso", dataCS[CS_MORTON_CODES]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/RadixSortP1.cso", dataCS[CS_RADIX_SORT_P1]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/RadixSortP2.cso", dataCS[CS_RADIX_SORT_P2]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/RadixSortTest.cso", dataCS[CS_RADIX_SORT_TEST]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstruct.cso", dataCS[CS_BVH_CONSTRUCTION]));
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
@@ -409,8 +440,8 @@ void Graphics::loadAssets()
 	bufferCB[0]->Map(0, &readRange, (void**)&bufferData);
 	bufferData->numGrps = numGrps;
 	bufferData->numObjects = numGrps * DATA_SIZE;
-	bufferData->max = XMFLOAT3(36, 42, 44);
-	bufferData->min = XMFLOAT3(-51, -2, -43);
+	bufferData->sceneBBMax = XMFLOAT3(36, 42, 44);
+	bufferData->sceneBBMin = XMFLOAT3(-51, -2, -43);
 	bufferCB[0]->Unmap(0, nullptr);
 
 	// setup vertex and index data (srv)
@@ -536,7 +567,7 @@ void Graphics::computeBVH()
 
 	pCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
 	
-	// barrier for p1
+	// barriers for radix sort
 	const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_NUM_ONES_BUFFER].Get()), // numOnesBuffer
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()) // transferBuffer
@@ -569,6 +600,7 @@ void Graphics::computeBVH()
 		pCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
 	}
 
+	/*
 	// sync EVERYTHING
 
 	pCommandList->ResourceBarrier(1,
@@ -578,7 +610,27 @@ void Graphics::computeBVH()
 
 	pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());	
 	pCommandList->Dispatch(1, 1, 1);
-	
+	*/
+
+	// construct the bvh
+	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION].Get());
+
+	// launch threads
+	pCommandList->Dispatch(numGrps, 1, 1);
+
+	// wait for UAV's to write
+	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()));
+
+	// sync EVERYTHING
+
+	pCommandList->ResourceBarrier(1,
+	&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
+
+	// run debug (TMP)
+
+	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_TEST].Get());
+	pCommandList->Dispatch(1, 1, 1);
+
 	// Close and execute the command list.
 	ThrowIfFailed(pCommandList->Close());
 	ID3D12CommandList* ppCommandLists[] = { pCommandList };

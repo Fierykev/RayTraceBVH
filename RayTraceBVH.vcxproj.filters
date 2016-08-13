@@ -101,19 +101,19 @@
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
     <FxCompile Include="RadixSortP1.hlsl" />
+    <FxCompile Include="BVHConstruct.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </FxCompile>
+    <FxCompile Include="BVHConstructTest.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="RadixSortGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </None>
-    <None Include="BVHConstructCPY.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
-    </None>
     <None Include="ErrorGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
-    </None>
-    <None Include="BVHConstruct.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
     </None>
   </ItemGroup>
 </Project>

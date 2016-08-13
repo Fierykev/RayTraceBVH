@@ -37,6 +37,8 @@ private:
 		CS_RADIX_SORT_P1,
 		CS_RADIX_SORT_P2,
 		CS_RADIX_SORT_TEST,
+		CS_BVH_CONSTRUCTION,
+		CS_BVH_CONSTRUCTION_TEST,
 		CS_COUNT
 	};
 
@@ -111,7 +113,7 @@ private:
 	struct CONSTANT_BUFFER
 	{
 		UINT numGrps, numObjects;
-		XMFLOAT3 max, min;
+		XMFLOAT3 sceneBBMax, sceneBBMin;
 	};
 
 	// buffer map

@@ -1,4 +1,4 @@
-#include <BVHGlobal.hlsl>
+#include <RadixSortGlobal.hlsl>
 
 /*
  Since BVH construction only multiplies by +/- 1 (direction), this macro computes the result
@@ -8,26 +8,6 @@
  */
 
 #define MULTIPLY_BY_POSNEG(x, s) ((x & ~(s & (s >> 1))) | ((~x + 1) & (s & (s >> 1))))
-
-struct NODE
-{
-	int parent;
-	int childL, childR;
-
-	uint code;
-};
-
-struct VERTEX
-{
-	float3 position;
-	float3 normal;
-	float2 texcoord;
-};
-
-cbuffer CONSTANT_BUFFER : register(b0)
-{
-	int numObjects;
-};
 
 /*
 DeBruijin lookup table.
@@ -71,9 +51,8 @@ Same as leadingPrefix but does bounds checks.
 int leadingPrefixBounds(uint d1, int index)
 {
 	// the below code will be flattened on optimization (no branch)
-	return (0 <= index && index < numObjects) ? leadingPrefix(d1, nodes[index].code) : -1;
+	return (0 <= index && index < (int)numObjects) ? leadingPrefix(d1, BVHTree[index].code) : -1;
 }
-
 
 /*
 Find the children of the node.
@@ -81,7 +60,7 @@ Find the children of the node.
 
 int2 getChildren(int index)
 {
-	uint codeCurrent = nodes[index].code;
+	uint codeCurrent = BVHTree[index].code;
 
 	// get range direction
 	int direction = sign(leadingPrefixBounds(codeCurrent, index + 1)
@@ -132,8 +111,7 @@ int2 getChildren(int index)
 			leadingPrefixBounds(codeCurrent, index + MULTIPLY_BY_POSNEG((tmp + delta), direction)))
 			tmp += delta;
 	} while (1 < delta);
-
-	// TODO: remove min and multiplication
+	
 	int location = index + MULTIPLY_BY_POSNEG(tmp, direction) + min(direction, 0);
 
 	int2 children;
@@ -154,22 +132,16 @@ int2 getChildren(int index)
 [numthreads(NUM_THREADS, 1, 1)]
 void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
-	// load in the leaf nodes (load factor of 2)
-	for (uint loadi = 0; loadi < 2; loadi++)
-		nodes[(threadID.x << 1) + loadi].code = sortedIndex[(threadID.x << 1) + loadi];
-
-	DeviceMemoryBarrierWithGroupSync();
-
 	// construct the tree
 	int2 children = getChildren(threadID.x);
 
 	// set the children
 
-	nodes[threadID.x + numObjects].childL = children.x;
-	nodes[threadID.x + numObjects].childR = children.y;
+	BVHTree[threadID.x + numObjects].childL = children.x;
+	BVHTree[threadID.x + numObjects].childR = children.y;
 
 	// set the parent
 
-	nodes[children.x].parent = threadID.x + numObjects;
-	nodes[children.y].parent = threadID.x + numObjects;
+	BVHTree[children.x].parent = threadID.x + numObjects;
+	BVHTree[children.y].parent = threadID.x + numObjects;
 }
