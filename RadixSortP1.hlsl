@@ -7,7 +7,7 @@ PREFIX SUM
 void prefixSum(uint ID)
 {
 	// up sweep
-	[unroll(8)]
+	//[unroll(8)]
 	for (uint upSweepi = 1; upSweepi < DATA_SIZE; upSweepi <<= 1)
 	{
 		uint indexL = ID * (upSweepi << 1) + upSweepi - 1;
@@ -28,7 +28,7 @@ void prefixSum(uint ID)
 	// pause for group
 	GroupMemoryBarrierWithGroupSync();
 
-	[unroll(8)]
+	//[unroll(8)]
 	for (uint downSweepi = DATA_SIZE >> 1; 0 < downSweepi; downSweepi >>= 1)
 	{
 		uint ID_index = ID * (downSweepi << 1);
@@ -78,22 +78,24 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		positionNotPresent[index] = !(tmpData & (1 << radixi));
 	}
 
-	// pause for the device accesses
-	GroupMemoryBarrierWithGroupSync();
+	uint totalOnes = 0;
 	
 	// set the one's count
-	if (groupThreadID == 0)
+	if (groupThreadID == NUM_THREADS - 1)
 		totalOnes = positionNotPresent[DATA_SIZE - 1];
+
+	// pause for the device accesses
+	GroupMemoryBarrierWithGroupSync();
 
 	// run a prefix sum
 	prefixSum(groupThreadID);
 
 	// add the number of ones in this group to a global buffer
-	if (groupThreadID == 0)
+	if (groupThreadID == NUM_THREADS - 1)
 		numOnesBuffer[groupID.x] = (totalOnes += positionNotPresent[DATA_SIZE - 1]);
-
+	
 	// output the data
-	[unroll(2)]
+	//[unroll(2)]
 	for (loadi = 0; loadi < 2; loadi++)
 	{
 		uint index = (groupThreadID << 1) + loadi;

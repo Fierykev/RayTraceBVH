@@ -37,7 +37,8 @@ private:
 		CS_RADIX_SORT_P1,
 		CS_RADIX_SORT_P2,
 		CS_RADIX_SORT_TEST,
-		CS_BVH_CONSTRUCTION,
+		CS_BVH_CONSTRUCTION_P1,
+		CS_BVH_CONSTRUCTION_P2,
 		CS_BVH_CONSTRUCTION_TEST,
 		CS_COUNT
 	};
@@ -49,17 +50,18 @@ private:
 		UAV_TRANSFER_BUFFER,
 		UAV_NUM_ONES_BUFFER,
 		UAV_RADIXI_BUFFER,
+		UAV_DEBUG_VAR,
 		UAV_COUNT
 	};
 
 	// static globals
 	static const UINT numFrames = 2;
-	static const UINT numSRVHeaps = 2;
+	static const UINT numSRVHeaps = 3;
 	static const UINT numUAVHeaps = UAV_COUNT;
 	static const UINT numCBVHeaps = 1;
 
 	// buffers
-	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer, bufferCB[1];
+	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer, debugBuffer, bufferCB[1];
 
 	// fences
 	UINT frameIndex;
@@ -103,6 +105,9 @@ private:
 		int childL, childR;
 
 		UINT code;
+
+		// bounding box calc
+		XMFLOAT3 bbMin, bbMax;
 	};
 
 	struct RESTART_BUFFER

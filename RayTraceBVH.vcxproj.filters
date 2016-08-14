@@ -34,6 +34,9 @@
     <Filter Include="Header Files\HLSL\Ray Tracing\BVH Construction">
       <UniqueIdentifier>{1227037a-77af-49e0-8acf-59c19de73aa0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\TestData">
+      <UniqueIdentifier>{d5bbfd26-8e01-4c9f-84db-8f1eecaed2b8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -53,6 +56,9 @@
     </ClCompile>
     <ClCompile Include="ObjectFileLoader.cpp">
       <Filter>Source Files\Object File Loader</Filter>
+    </ClCompile>
+    <ClCompile Include="TestData.cpp">
+      <Filter>Source Files\TestData</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -77,18 +83,15 @@
     <ClInclude Include="Helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TestData.h">
+      <Filter>Source Files\TestData</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="RayTraceBVHPS.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
     </FxCompile>
     <FxCompile Include="RayTraceBVHVS.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing</Filter>
-    </FxCompile>
-    <FxCompile Include="MortonCodesCS.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing</Filter>
-    </FxCompile>
-    <FxCompile Include="ParallelReductionCS.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
     </FxCompile>
     <FxCompile Include="RadixSortP2.hlsl">
@@ -100,12 +103,17 @@
     <FxCompile Include="GenMortonCodes.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
-    <FxCompile Include="RadixSortP1.hlsl" />
-    <FxCompile Include="BVHConstruct.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
-    </FxCompile>
     <FxCompile Include="BVHConstructTest.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </FxCompile>
+    <FxCompile Include="BVHConstructP2.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </FxCompile>
+    <FxCompile Include="BVHConstructP1.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
+    </FxCompile>
+    <FxCompile Include="RadixSortP1.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

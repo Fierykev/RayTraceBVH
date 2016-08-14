@@ -15,7 +15,6 @@ using namespace std;
 
 #define MULTIPLY_BY_POSNEG(x, s) ((x & ~(s & (s >> 1))) | ((~x + 1) & (s & (s >> 1))))
 
-
 struct int2
 {
 	int x, y;
@@ -106,9 +105,10 @@ as ones pushed to the right.  Does not give meaningful
 number but the relative output is correct.
 */
 
-int leadingPrefix(uint d1, uint d2)
+int leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 {
-	uint data = d1 ^ d2;
+	// use the index as a tie breaker if they are the same
+	uint data = d1 == d2 ? index1 ^ index2 : d1 ^ d2;
 
 	// remove non-leading zeros
 
@@ -126,13 +126,12 @@ int leadingPrefix(uint d1, uint d2)
 Same as leadingPrefix but does bounds checks.
 */
 
-int leadingPrefixBounds(uint d1, int index)
+int leadingPrefixBounds(uint d1, uint d1Index, int index)
 {
 	//return leadingPrefix(d1, codes[clamp(index, 0, numObjects - 1)]);
 	// TODO: remove branch
-	return (0 <= index && index < numObjects) ? leadingPrefix(d1, nodes[index].code) : -1;
+	return (0 <= index && index < numObjects) ? leadingPrefix(d1, nodes[index].code, d1Index, index) : -1;
 }
-
 
 /*
 Find the children of the node.
@@ -143,17 +142,17 @@ int2 getChildren(int index)
 	uint codeCurrent = nodes[index].code;
 
 	// get range direction
-	int direction = sign(leadingPrefixBounds(codeCurrent, index + 1)
-		- leadingPrefixBounds(codeCurrent, index - 1));
+	int direction = sign(leadingPrefixBounds(codeCurrent, index, index + 1)
+		- leadingPrefixBounds(codeCurrent, index, index - 1));
 
 	// get upper bound of length range
-	int minLeadingZero = leadingPrefixBounds(codeCurrent, index - direction);
+	int minLeadingZero = leadingPrefixBounds(codeCurrent, index, index - direction);
 	uint boundLen = 2;
 
 	// TODO: change back to multiply by 4
 	for (;
 	minLeadingZero < leadingPrefixBounds(
-		codeCurrent, index + MULTIPLY_BY_POSNEG(boundLen, direction));
+		codeCurrent, index, index + MULTIPLY_BY_POSNEG(boundLen, direction));
 		boundLen <<= 1) {
 	}
 
@@ -168,16 +167,16 @@ int2 getChildren(int index)
 
 		if (minLeadingZero <
 			leadingPrefixBounds(
-				codeCurrent, index + MULTIPLY_BY_POSNEG((deltaSum + delta), direction)))
+				codeCurrent, index, index + MULTIPLY_BY_POSNEG((deltaSum + delta), direction)))
 			deltaSum += delta;
 	} while (1 < delta);
 
 	int boundStart = index + MULTIPLY_BY_POSNEG(deltaSum, direction);
 	
 	//return int2(lowerBound, upperBound);
-
+	
  	// find slice range
-	int leadingZero = leadingPrefixBounds(codeCurrent, boundStart);
+	int leadingZero = leadingPrefixBounds(codeCurrent, index, boundStart);
 
 	delta = deltaSum;
 	int tmp = 0;
@@ -187,7 +186,7 @@ int2 getChildren(int index)
 		delta = (delta + 1) >> 1;
 
 		if (leadingZero <
-			leadingPrefixBounds(codeCurrent, index + MULTIPLY_BY_POSNEG((tmp + delta), direction)))
+			leadingPrefixBounds(codeCurrent, index, index + MULTIPLY_BY_POSNEG((tmp + delta), direction)))
 			tmp += delta;
 	} while (1 < delta);
 

@@ -12,6 +12,9 @@ struct NODE
 	int childL, childR;
 
 	uint code;
+
+	// bounding box calc
+	float3 bbMin, bbMax;
 };
 
 struct VERTEX
@@ -29,17 +32,19 @@ cbuffer CONSTANT_BUFFER : register(b0)
 
 StructuredBuffer<VERTEX> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
+StructuredBuffer<NODE> debugData : register(t2);
 
 RWStructuredBuffer<NODE> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);
 RWStructuredBuffer<uint> numOnesBuffer : register(u2);
 RWStructuredBuffer<uint> radixiBuffer : register(u3);
+RWStructuredBuffer<uint> debugVar : register(u4);
 
 //groupshared uint phase;
 groupshared uint radixi;
 
 groupshared uint positionNotPresent[DATA_SIZE];
-groupshared uint netOnes, numPrecOnes, totalOnes;
+groupshared uint netOnes, numPrecOnes;
 
 void getRadixi(uint groupThreadID, uint3 groupID)
 {

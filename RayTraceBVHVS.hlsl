@@ -30,7 +30,7 @@ PSINPUT main(VSINPUT In)
 	worldViewProjection2[2] = float4(0, .0995037, .995037, -100.499);
 	worldViewProjection2[3] = float4(0, 0, 0, 1);
 	
-	if (numOnesBuffer[0] != RS_NO_ERROR)
+	if (debugVar[0] == BVH_ERROR_1)
 		In.position = float4(0, 0, 0, 0);
 	O.position = mul(In.position, worldViewProjection2);
 

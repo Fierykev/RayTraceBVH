@@ -7,5 +7,6 @@
 #define RS_ERROR_2 346
 
 #define BVH_ERROR_1 347
+#define BVH_ERROR_2 348
 
 #endif

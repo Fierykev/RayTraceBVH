@@ -6,6 +6,7 @@
 #include "Shader.h"
 
 // TMP
+#include "TestData.h"
 #include <iostream>
 #include <ctime>
 
@@ -237,7 +238,9 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortTest.cso", dataCS[CS_RADIX_SORT_TEST]));
 
-	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstruct.cso", dataCS[CS_BVH_CONSTRUCTION]));
+	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstructP1.cso", dataCS[CS_BVH_CONSTRUCTION_P1]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstructP2.cso", dataCS[CS_BVH_CONSTRUCTION_P2]));
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstructTest.cso", dataCS[CS_BVH_CONSTRUCTION_TEST]));
 #else
@@ -257,7 +260,11 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Release/RadixSortTest.cso", dataCS[CS_RADIX_SORT_TEST]));
 
-	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstruct.cso", dataCS[CS_BVH_CONSTRUCTION]));
+	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstructP1.cso", dataCS[CS_BVH_CONSTRUCTION_P1]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstructP2.cso", dataCS[CS_BVH_CONSTRUCTION_P2]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstructTest.cso", dataCS[CS_BVH_CONSTRUCTION_TEST]));
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
@@ -357,7 +364,7 @@ void Graphics::loadAssets()
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps * DATA_SIZE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * numGrps, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
 		IID_PPV_ARGS(&bufferCS[UAV_NUM_ONES_BUFFER])));
@@ -370,15 +377,33 @@ void Graphics::loadAssets()
 		nullptr,
 		IID_PPV_ARGS(&bufferCS[UAV_RADIXI_BUFFER])));
 
-	// zero bool buffer
+	ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		nullptr,
+		IID_PPV_ARGS(&bufferCS[UAV_DEBUG_VAR])));
+
+	// zero buffer
 	
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(UINT) * numGrps),
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(UINT) * DATA_SIZE * numGrps),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&zeroBuffer)));
+
+	// debug buffer
+
+	ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(NODE) * numGrps * DATA_SIZE * 2 - 1),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&debugBuffer)));
 		
 	// constant buffer
 
@@ -425,9 +450,14 @@ void Graphics::loadAssets()
 	UINT* boolBufferData;
 
 	zeroBuffer->Map(0, &readRange, reinterpret_cast<void**>(&boolBufferData));
-	ZeroMemory(boolBufferData, sizeof(UINT) * numGrps);
+	ZeroMemory(boolBufferData, sizeof(UINT) * DATA_SIZE * numGrps);
 	zeroBuffer->Unmap(0, nullptr);
-	
+
+	// set up debug buffer
+	debugBuffer->Map(0, &readRange, reinterpret_cast<void**>(&boolBufferData));
+	memcpy(boolBufferData, constructDebugTree(), sizeof(NODE) * DATA_SIZE * numGrps * 2 - 1);
+	debugBuffer->Unmap(0, nullptr);
+
 	// set up the constant buffer
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cdesc;
@@ -454,6 +484,14 @@ void Graphics::loadAssets()
 	
 	srvHandle0.Offset(1, csuDescriptorSize);
 	device->CreateShaderResourceView(obj.getIndexMappedBuffer(), &srvDesc, srvHandle0);
+
+	// setup debug resource
+
+	srvDesc.Buffer.NumElements = numGrps * DATA_SIZE * 2 - 1;
+	srvDesc.Buffer.StructureByteStride = sizeof(NODE);
+
+	srvHandle0.Offset(1, csuDescriptorSize);
+	device->CreateShaderResourceView(debugBuffer.Get(), &srvDesc, srvHandle0);
 
 	// setup buffer (uav)
 
@@ -487,6 +525,16 @@ void Graphics::loadAssets()
 
 	uavHandle0.Offset(1, csuDescriptorSize);
 	device->CreateUnorderedAccessView(bufferCS[UAV_RADIXI_BUFFER].Get(), nullptr, &uavDesc, uavHandle0);
+
+	// debug var
+	
+	uavDesc.Buffer.NumElements = 1;
+	uavDesc.Buffer.StructureByteStride = sizeof(unsigned int);
+
+	uavHandle0.Offset(1, csuDescriptorSize);
+	device->CreateUnorderedAccessView(bufferCS[UAV_DEBUG_VAR].Get(), nullptr, &uavDesc, uavHandle0);
+
+
 
 	// close the command list until things are added
 
@@ -552,84 +600,104 @@ void Graphics::computeBVH()
 
 	// setup the command list
 
-	// morton code gen
+	// reset debug var
 
-	// reset to start over
-	pCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
-
-	pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
-
-	// barrier for morton codes and zero buffer
-	const CD3DX12_RESOURCE_BARRIER mortonBarrier[] = {
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()), // bvh tree
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()) // radixi
-	};
-
-	pCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
+	pCommandList->CopyBufferRegion(bufferCS[UAV_DEBUG_VAR].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT));
 	
-	// barriers for radix sort
-	const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_NUM_ONES_BUFFER].Get()), // numOnesBuffer
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()) // transferBuffer
-	};
-
-	const CD3DX12_RESOURCE_BARRIER p2Barrier[] = {
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()), // radixi
-		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
-	};
-
-	// run the sort
-	for (unsigned int i = 0; i < 32; i++)
+	for (uint testRuns = 0; testRuns < 10; testRuns++)
 	{
-		// set state to p1
-		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P1].Get());
+		// morton code gen
 
-		// launch threads
-		pCommandList->Dispatch(numGrps, 1, 1);
+		// reset to start over
+		pCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
+
+		pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
+
+		// barrier for morton codes and zero buffer
+		const CD3DX12_RESOURCE_BARRIER mortonBarrier[] = {
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()), // bvh tree
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()) // radixi
+		};
+
+		pCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
+
+		// barriers for radix sort
+		const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_NUM_ONES_BUFFER].Get()), // numOnesBuffer
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()) // transferBuffer
+		};
+
+		const CD3DX12_RESOURCE_BARRIER p2Barrier[] = {
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()), // radixi
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
+		};
 		
-		// wait for UAV's to write
-		pCommandList->ResourceBarrier(_countof(p1Barrier), p1Barrier);
+		// run the sort
+		for (unsigned int i = 0; i < 32; i++)
+		{
+			// set state to p1
+			pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P1].Get());
 
-		// set state to p2
-		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
+			// launch threads
+			pCommandList->Dispatch(numGrps, 1, 1);
+
+			// wait for UAV's to write
+			pCommandList->ResourceBarrier(_countof(p1Barrier), p1Barrier);
+			
+			// set state to p2
+			pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
+
+			// launch threads
+			pCommandList->Dispatch(numGrps, 1, 1);
+
+			// wait for UAV's to write
+			pCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
+		}
+		/*
+		// sync EVERYTHING
+
+		pCommandList->ResourceBarrier(1,
+			&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
+
+		// run debug (TMP)
+
+		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());
+		pCommandList->Dispatch(1, 1, 1);
+		*/
+
+		const CD3DX12_RESOURCE_BARRIER p1BVHBarrier[] = {
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()), // transfer buffer
+			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
+		};
+		/*
+		// construct the bvh part 1
+		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P1].Get());
+
+		// clear out automics
+		pCommandList->CopyBufferRegion(bufferCS[UAV_TRANSFER_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * DATA_SIZE * numGrps);
 
 		// launch threads
 		pCommandList->Dispatch(numGrps, 1, 1);
 
 		// wait for UAV's to write
-		pCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
+		pCommandList->ResourceBarrier(_countof(p1BVHBarrier), p1BVHBarrier);
+
+		// construct the bvh part 2
+		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P2].Get());
+
+		// launch threads
+		pCommandList->Dispatch(numGrps, 1, 1);
+		*/
+		// sync EVERYTHING
+
+		pCommandList->ResourceBarrier(1,
+			&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
+
+		// run debug (TMP)
+
+		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_TEST].Get());
+		pCommandList->Dispatch(1, 1, 1);
 	}
-
-	/*
-	// sync EVERYTHING
-
-	pCommandList->ResourceBarrier(1,
-		&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
-
-	// run debug (TMP)
-
-	pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());	
-	pCommandList->Dispatch(1, 1, 1);
-	*/
-
-	// construct the bvh
-	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION].Get());
-
-	// launch threads
-	pCommandList->Dispatch(numGrps, 1, 1);
-
-	// wait for UAV's to write
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()));
-
-	// sync EVERYTHING
-
-	pCommandList->ResourceBarrier(1,
-	&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
-
-	// run debug (TMP)
-
-	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_TEST].Get());
-	pCommandList->Dispatch(1, 1, 1);
 
 	// Close and execute the command list.
 	ThrowIfFailed(pCommandList->Close());

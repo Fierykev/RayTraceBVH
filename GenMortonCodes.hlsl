@@ -63,13 +63,25 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	//[unroll(2)]
 	for (uint loadi = 0; loadi < 2; loadi++)
 	{
+		// bounding box computation	
+		float3 vertData = verts[indices[threadID.x * 3 * 2 + loadi * 3]].position;
+
+		float3 bbMin = vertData, bbMax = vertData;
+
 		// find the sum of the verts in the triangle
-		float3 avg = float3(0, 0, 0);
+		float3 avg = vertData;
 
 		// load in the data (3 indices and 3 verts)
 		//[unroll(3)]
-		for (uint sumi = 0; sumi < 3; sumi++)
-			avg += verts[indices[threadID.x * 3 * 2 + loadi * 3 + sumi]].position;
+		for (uint sumi = 1; sumi < 3; sumi++)
+		{
+			vertData = verts[indices[threadID.x * 3 * 2 + loadi * 3 + sumi]].position;
+
+			avg += vertData;
+
+			bbMin = min(bbMin, avg);
+			bbMax = max(bbMax, avg);
+		}
 
 		// divide by three to compute the average
 		avg /= 3.f;
@@ -87,8 +99,16 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 			);
 
 		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode(tmpPoint);
+
+		// store bounding box info
+		BVHTree[(threadID.x << 1) + loadi].bbMin = tmpPoint;
+		BVHTree[(threadID.x << 1) + loadi].bbMax = float3(tmpPoint.y, tmpPoint.z, tmpPoint.x);
 #else
 		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode((avg - sceneBBMin) / (sceneBBMax - sceneBBMin));
+
+		// store bounding box info
+		BVHTree[(threadID.x << 1) + loadi].bbMin = bbMin;
+		BVHTree[(threadID.x << 1) + loadi].bbMax = bbMax;
 #endif
 	}
 }

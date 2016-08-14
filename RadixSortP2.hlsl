@@ -38,7 +38,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 			tmpData = BVHTree[globalIndex + numObjects].code;
 		else
 			tmpData = BVHTree[globalIndex].code;
-
+		
 		uint tmpPositionNotPresent =
 			transferBuffer[globalIndex];
 

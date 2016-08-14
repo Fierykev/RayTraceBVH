@@ -255,17 +255,6 @@ int main()
 		if ((codeData[x0][y0] & 0x11) > (codeData[x1][y1] & 0x11))
 			printf("ERR\n");
 	}
-	uint data = 189412135418;
-	data |= data >> 1;
-	data |= data >> 2;
-	data |= data >> 4;
-	data |= data >> 8;
-	data |= data >> 16;
-
-	data = ~data;
-
-	std::bitset<32> out(data);
-	std::cout << out << std::endl;
 
 	system("PAUSE");
 
