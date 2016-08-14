@@ -534,8 +534,6 @@ void Graphics::loadAssets()
 	uavHandle0.Offset(1, csuDescriptorSize);
 	device->CreateUnorderedAccessView(bufferCS[UAV_DEBUG_VAR].Get(), nullptr, &uavDesc, uavHandle0);
 
-
-
 	// close the command list until things are added
 
 	ThrowIfFailed(commandList->Close());
@@ -669,7 +667,7 @@ void Graphics::computeBVH()
 			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()), // transfer buffer
 			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
 		};
-		/*
+		
 		// construct the bvh part 1
 		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P1].Get());
 
@@ -681,7 +679,7 @@ void Graphics::computeBVH()
 
 		// wait for UAV's to write
 		pCommandList->ResourceBarrier(_countof(p1BVHBarrier), p1BVHBarrier);
-
+		/*
 		// construct the bvh part 2
 		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P2].Get());
 

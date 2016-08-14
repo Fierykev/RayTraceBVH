@@ -1,4 +1,5 @@
 #include <RadixSortGlobal.hlsl>
+#include <ErrorGlobal.hlsl>
 
 /*
  Since BVH construction only multiplies by +/- 1 (direction), this macro computes the result
@@ -15,7 +16,7 @@ The table cannot be inlined in the method
 because it takes up extra local space.
 */
 
-static const int deBruijinLookup[] =
+static int deBruijinLookup[] =
 {
 	0, 31, 9, 30, 3, 8, 13, 29, 2,
 	5, 7, 21, 12, 24, 28, 19,
@@ -34,6 +35,8 @@ int leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 	// use the index as a tie breaker if they are the same
 	uint data = d1 == d2 ? index1 ^ index2 : d1 ^ d2;
 
+	// remove non-leading zeros
+
 	data |= data >> 1;
 	data |= data >> 2;
 	data |= data >> 4;
@@ -41,7 +44,6 @@ int leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 	data |= data >> 16;
 	data++;
 
-	// the below code will be flattened on optimization (no branch)
 	return data ? deBruijinLookup[data * 0x076be629 >> 27] : 32;
 }
 
@@ -51,7 +53,6 @@ Same as leadingPrefix but does bounds checks.
 
 int leadingPrefixBounds(uint d1, uint d1Index, int index)
 {
-	// the below code will be flattened on optimization (no branch)
 	return (0 <= index && index < (int)numObjects) ? leadingPrefix(d1, BVHTree[index].code, d1Index, index) : -1;
 }
 
@@ -72,7 +73,7 @@ int2 getChildren(int index)
 	uint boundLen = 2;
 
 	// TODO: change back to multiply by 4
-	[loop]
+
 	for (;
 	minLeadingZero < leadingPrefixBounds(
 		codeCurrent, index, index + MULTIPLY_BY_POSNEG(boundLen, direction));
@@ -84,7 +85,6 @@ int2 getChildren(int index)
 
 	int deltaSum = 0;
 
-	[loop]
 	do
 	{
 		delta = (delta + 1) >> 1;
@@ -103,7 +103,6 @@ int2 getChildren(int index)
 	delta = deltaSum;
 	int tmp = 0;
 
-	[loop]
 	do
 	{
 		delta = (delta + 1) >> 1;
@@ -112,7 +111,7 @@ int2 getChildren(int index)
 			leadingPrefixBounds(codeCurrent, index, index + MULTIPLY_BY_POSNEG((tmp + delta), direction)))
 			tmp += delta;
 	} while (1 < delta);
-	
+
 	int location = index + MULTIPLY_BY_POSNEG(tmp, direction) + min(direction, 0);
 
 	int2 children;

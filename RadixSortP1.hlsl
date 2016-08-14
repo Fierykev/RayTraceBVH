@@ -95,7 +95,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		numOnesBuffer[groupID.x] = (totalOnes += positionNotPresent[DATA_SIZE - 1]);
 	
 	// output the data
-	//[unroll(2)]
+	[unroll(2)]
 	for (loadi = 0; loadi < 2; loadi++)
 	{
 		uint index = (groupThreadID << 1) + loadi;

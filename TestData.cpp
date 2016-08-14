@@ -101,7 +101,7 @@ int leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 	data |= data >> 8;
 	data |= data >> 16;
 	data++;
-
+	//cout << (data * 0x076be629) << endl;
 	return data ? deBruijinLookup[data * 0x076be629 >> 27] : 32;
 }
 
@@ -198,6 +198,7 @@ void printPostOrder(NODE* p, int indent = 0)
 	if (indent) {
 		std::cout << std::setw(indent) << ' ';
 	}
+
 	cout << p->code << "\n ";
 }
 
@@ -434,18 +435,6 @@ NODE* constructDebugTree()
 				codeData[y][x] = backbufferCodes[y * DATA_SIZE + x];
 			}
 		}
-
-		if (radixi == 31)
-		{
-			// TMP
-			for (uint i = 0; i < numObjects; i++)
-			{
-				uint x0 = (i) / DATA_SIZE, y0 = (i) % DATA_SIZE;
-				nodes[i].code = codeData[x0][y0];
-			}
-
-			return nodes;
-		}
 	}
 
 	for (uint i = 1; i < NUM_GRPS * DATA_SIZE; i++)
@@ -474,6 +463,8 @@ NODE* constructDebugTree()
 		nodes[i].code = i;
 	}
 
+	uint tmpData[numObjects * 2 - 1] = { 0 };
+
 	for (int threadID = 0; threadID < numObjects - 1; threadID++)
 	{
 		int index = threadID;
@@ -498,6 +489,9 @@ NODE* constructDebugTree()
 	// set root to -1
 	nodes[numObjects].parent = -1;
 	cout << nodes[6391].childR << " " << numObjects + 500 << endl;
+
+	return nodes;
+
 	// compute the bounding box
 
 	// reset num ones buffer

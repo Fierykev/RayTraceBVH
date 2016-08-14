@@ -30,12 +30,14 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		// if (debugData[0].parent == 5889)
 			//numOnesBuffer[0] = BVH_ERROR_1;
 
-		for (uint i = 0; i < numObjects; i++)
-		{
-			if (debugData[i].code != BVHTree[i + numObjects].code)
+		
+		//uint i = 0;
+		for (uint i = 0; i < numObjects * 2 - 1; i++)
+		{//debugData[i].parent
+			if (debugData[i].parent != BVHTree[i].parent)//debugData[i].parent != BVHTree[i].parent)
 				debugVar[0] = BVH_ERROR_1;
 		}
-
+		
 		/*
 		for (uint i = 0; i < numObjects; i++)
 		{
