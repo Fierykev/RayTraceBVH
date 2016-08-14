@@ -108,14 +108,14 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode(tmpPoint);
 
 		// store bounding box info
-		BVHTree[index].bbMin = tmpPoint;
-		BVHTree[index].bbMax = float3(tmpPoint.y, tmpPoint.z, tmpPoint.x);
+		BVHTree[index].bbox.bbMin = tmpPoint;
+		BVHTree[index].bbox.bbMax = float3(tmpPoint.y, tmpPoint.z, tmpPoint.x);
 #else
 		BVHTree[index].code = calcMortonCode((avg - sceneBBMin) / (sceneBBMax - sceneBBMin));
 
 		// store bounding box info
-		BVHTree[index].bbMin = bbMin;
-		BVHTree[index].bbMax = bbMax;
+		BVHTree[index].bbox.bbMin = bbMin;
+		BVHTree[index].bbox.bbMax = bbMax;
 #endif
 
 		// set children to invalid

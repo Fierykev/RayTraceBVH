@@ -99,6 +99,11 @@ private:
 	// model
 	ObjLoader obj;
 
+	struct Box
+	{
+		XMFLOAT3 bbMin, bbMax;
+	};
+
 	struct NODE
 	{
 		int parent;
@@ -107,7 +112,7 @@ private:
 		UINT code;
 
 		// bounding box calc
-		XMFLOAT3 bbMin, bbMax;
+		Box bbox;
 
 		// index start value
 		UINT index;

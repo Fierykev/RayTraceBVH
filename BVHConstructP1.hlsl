@@ -1,6 +1,11 @@
 #include <RayTraceGlobal.hlsl>
 
 /*
+BVH Construction is based on:
+http://devblogs.nvidia.com/parallelforall/wp-content/uploads/2012/11/karras2012hpg_paper.pdf
+*/
+
+/*
  Since BVH construction only multiplies by +/- 1 (direction), this macro computes the result
  of the multiplication using bitwise operations rather than multiplication.
  Please note that it is assumed that multiplication takes longer than the below

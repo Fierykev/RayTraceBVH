@@ -38,13 +38,13 @@ void Graphics::onInit()
 
 void Graphics::onUpdate()
 {
-	// wait for the last present
-	
-	WaitForSingleObjectEx(swapChainEvent, 100, FALSE);
-
 	// run the compute bbh
 
 	computeBVH();
+
+	// wait for the last present
+	
+	WaitForSingleObjectEx(swapChainEvent, 100, FALSE);
 }
 
 void Graphics::onRender()
@@ -601,101 +601,98 @@ void Graphics::computeBVH()
 
 	pCommandList->CopyBufferRegion(bufferCS[UAV_DEBUG_VAR].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT));
 	
-	for (uint testRuns = 0; testRuns < 10; testRuns++)
+	// morton code gen
+
+	// reset to start over
+	pCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
+
+	pCommandList->SetPipelineState(computeStateCS[CS_MORTON_CODES].Get());
+	pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
+		
+	// barrier for morton codes and zero buffer
+	const CD3DX12_RESOURCE_BARRIER mortonBarrier[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()), // bvh tree
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()) // radixi
+	};
+
+	pCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
+
+	// barriers for radix sort
+	const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_NUM_ONES_BUFFER].Get()), // numOnesBuffer
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()) // transferBuffer
+	};
+
+	const CD3DX12_RESOURCE_BARRIER p2Barrier[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()), // radixi
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
+	};
+		
+	// run the sort
+	for (unsigned int i = 0; i < 32; i++)
 	{
-		// morton code gen
-
-		// reset to start over
-		pCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
-
-		pCommandList->SetPipelineState(computeStateCS[CS_MORTON_CODES].Get());
-		pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
-		
-		// barrier for morton codes and zero buffer
-		const CD3DX12_RESOURCE_BARRIER mortonBarrier[] = {
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()), // bvh tree
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()) // radixi
-		};
-
-		pCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
-
-		// barriers for radix sort
-		const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_NUM_ONES_BUFFER].Get()), // numOnesBuffer
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()) // transferBuffer
-		};
-
-		const CD3DX12_RESOURCE_BARRIER p2Barrier[] = {
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()), // radixi
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
-		};
-		
-		// run the sort
-		for (unsigned int i = 0; i < 32; i++)
-		{
-			// set state to p1
-			pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P1].Get());
-
-			// launch threads
-			pCommandList->Dispatch(numGrps, 1, 1);
-
-			// wait for UAV's to write
-			pCommandList->ResourceBarrier(_countof(p1Barrier), p1Barrier);
-			
-			// set state to p2
-			pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
-
-			// launch threads
-			pCommandList->Dispatch(numGrps, 1, 1);
-
-			// wait for UAV's to write
-			pCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
-		}
-		/*
-		// sync EVERYTHING
-
-		pCommandList->ResourceBarrier(1,
-			&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
-
-		// run debug (TMP)
-
-		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());
-		pCommandList->Dispatch(1, 1, 1);
-		*/
-
-		const CD3DX12_RESOURCE_BARRIER p1BVHBarrier[] = {
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()), // transfer buffer
-			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
-		};
-		
-		// construct the bvh part 1
-		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P1].Get());
-
-		// clear out automics
-		pCommandList->CopyBufferRegion(bufferCS[UAV_TRANSFER_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * DATA_SIZE * numGrps);
+		// set state to p1
+		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P1].Get());
 
 		// launch threads
 		pCommandList->Dispatch(numGrps, 1, 1);
-		
+
 		// wait for UAV's to write
-		pCommandList->ResourceBarrier(_countof(p1BVHBarrier), p1BVHBarrier);
-		
-		// construct the bvh part 2
-		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P2].Get());
+		pCommandList->ResourceBarrier(_countof(p1Barrier), p1Barrier);
+			
+		// set state to p2
+		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
 
 		// launch threads
 		pCommandList->Dispatch(numGrps, 1, 1);
-		
-		// sync EVERYTHING
 
-		pCommandList->ResourceBarrier(1,
-			&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
-
-		// run debug (TMP)
-
-		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_TEST].Get());
-		pCommandList->Dispatch(1, 1, 1);
+		// wait for UAV's to write
+		pCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
 	}
+	/*
+	// sync EVERYTHING
+
+	pCommandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
+
+	// run debug (TMP)
+
+	pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());
+	pCommandList->Dispatch(1, 1, 1);
+	*/
+
+	const CD3DX12_RESOURCE_BARRIER p1BVHBarrier[] = {
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()), // transfer buffer
+		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
+	};
+		
+	// construct the bvh part 1
+	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P1].Get());
+
+	// clear out automics
+	pCommandList->CopyBufferRegion(bufferCS[UAV_TRANSFER_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * DATA_SIZE * numGrps);
+
+	// launch threads
+	pCommandList->Dispatch(numGrps, 1, 1);
+		
+	// wait for UAV's to write
+	pCommandList->ResourceBarrier(_countof(p1BVHBarrier), p1BVHBarrier);
+		
+	// construct the bvh part 2
+	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P2].Get());
+
+	// launch threads
+	pCommandList->Dispatch(numGrps, 1, 1);
+	/*
+	// sync EVERYTHING
+
+	pCommandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
+
+	// run debug (TMP)
+
+	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_TEST].Get());
+	pCommandList->Dispatch(1, 1, 1);*/
 
 	// Close and execute the command list.
 	ThrowIfFailed(pCommandList->Close());

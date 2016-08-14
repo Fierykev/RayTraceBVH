@@ -6,6 +6,23 @@
 
 #define DEBUG
 
+// shapes
+
+struct Box
+{
+	float3 bbMin, bbMax;
+};
+
+struct Ray
+{
+	float3 position;
+	float3 direction;
+
+	float3 invDirection;
+};
+
+// buffer structs
+
 struct NODE
 {
 	int parent;
@@ -14,7 +31,7 @@ struct NODE
 	uint code;
 
 	// bounding box calc
-	float3 bbMin, bbMax;
+	Box bbox;
 
 	// index start value
 	uint index;
@@ -27,10 +44,12 @@ struct VERTEX
 	float2 texcoord;
 };
 
-cbuffer CONSTANT_BUFFER : register(b0)
+cbuffer RAY_TRACE_BUFFER : register(b0)
 {
 	uint numGrps, numObjects;
 	float3 sceneBBMin, sceneBBMax;
+	matrix worldviewprojection;
+	matrix world;
 };
 
 StructuredBuffer<VERTEX> verts : register(t0);

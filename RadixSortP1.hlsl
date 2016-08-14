@@ -3,11 +3,11 @@
 /**************************************
 PREFIX SUM
 **************************************/
-
+// TODO: add source
 void prefixSum(uint ID)
 {
 	// up sweep
-	//[unroll(8)]
+	[unroll(8)]
 	for (uint upSweepi = 1; upSweepi < DATA_SIZE; upSweepi <<= 1)
 	{
 		uint indexL = ID * (upSweepi << 1) + upSweepi - 1;
@@ -28,7 +28,7 @@ void prefixSum(uint ID)
 	// pause for group
 	GroupMemoryBarrierWithGroupSync();
 
-	//[unroll(8)]
+	[unroll(8)]
 	for (uint downSweepi = DATA_SIZE >> 1; 0 < downSweepi; downSweepi >>= 1)
 	{
 		uint ID_index = ID * (downSweepi << 1);

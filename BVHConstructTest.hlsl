@@ -38,7 +38,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		
 		for (uint i = 0; i < numObjects; i++)
 		{
-			if (!float3Compare(debugData[i].bbMin, BVHTree[i].bbMin))
+			if (!float3Compare(debugData[i].bbox.bbMin, BVHTree[i].bbox.bbMin))
 				//|| !float3Compare(debugData[i].bbMax, BVHTree[i].bbMax))
 				debugVar[0] = BVH_ERROR_1;
 		}

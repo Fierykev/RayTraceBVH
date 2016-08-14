@@ -311,8 +311,8 @@ NODE* constructDebugTree()
 				);
 
 			// randomly set the bounding box
-			codeData[j][i].bbMin = point;
-			codeData[j][i].bbMax = float3(point.y, point.z, point.x);
+			codeData[j][i].bbox.bbMin = point;
+			codeData[j][i].bbox.bbMax = float3(point.y, point.z, point.x);
 
 			codeData[j][i].code = calcMortonCode((float*)&point); //rand();
 		}
@@ -450,8 +450,8 @@ NODE* constructDebugTree()
 		uint x0 = i / DATA_SIZE, y0 = i % DATA_SIZE;
 
 		nodes[i].code = codeData[x0][y0].code;
-		nodes[i].bbMin = codeData[x0][y0].bbMin;
-		nodes[i].bbMax = codeData[x0][y0].bbMax;
+		nodes[i].bbox.bbMin = codeData[x0][y0].bbox.bbMin;
+		nodes[i].bbox.bbMax = codeData[x0][y0].bbox.bbMax;
 		nodes[i].childL = -1;
 		nodes[i].childR = -1;
 	}
@@ -505,11 +505,11 @@ NODE* constructDebugTree()
 		while (value)
 		{
 			// compute the union of the bounding boxes
-			nodes[nodeID].bbMin = min(nodes[nodes[nodeID].childL].bbMin,
-				nodes[nodes[nodeID].childR].bbMin);
+			nodes[nodeID].bbox.bbMin = min(nodes[nodes[nodeID].childL].bbox.bbMin,
+				nodes[nodes[nodeID].childR].bbox.bbMin);
 
-			nodes[nodeID].bbMax = max(nodes[nodes[nodeID].childL].bbMax,
-				nodes[nodes[nodeID].childR].bbMax);
+			nodes[nodeID].bbox.bbMax = max(nodes[nodes[nodeID].childL].bbox.bbMax,
+				nodes[nodes[nodeID].childR].bbox.bbMax);
 
 			// get the parent
 			nodeID = nodes[nodeID].parent;

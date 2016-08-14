@@ -36,6 +36,11 @@ struct float3
 	}
 };
 
+struct Box
+{
+	float3 bbMin, bbMax;
+};
+
 struct NODE
 {
 	int parent;
@@ -44,7 +49,7 @@ struct NODE
 	uint code;
 
 	// bounding box calc
-	float3 bbMin, bbMax;
+	Box bbox;
 
 	// index start value
 	uint index;
