@@ -579,7 +579,6 @@ void Graphics::computeBVH()
 	// set the shader
 	ID3D12GraphicsCommandList* pCommandList = computeCommandList.Get();
 	
-	pCommandList->SetPipelineState(computeStateCS[CS_MORTON_CODES].Get());
 	pCommandList->SetComputeRootSignature(computeRootSignature.Get());
 
 	// set constant buffer
@@ -609,8 +608,9 @@ void Graphics::computeBVH()
 		// reset to start over
 		pCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
 
+		pCommandList->SetPipelineState(computeStateCS[CS_MORTON_CODES].Get());
 		pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
-
+		
 		// barrier for morton codes and zero buffer
 		const CD3DX12_RESOURCE_BARRIER mortonBarrier[] = {
 			CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()), // bvh tree
@@ -676,16 +676,16 @@ void Graphics::computeBVH()
 
 		// launch threads
 		pCommandList->Dispatch(numGrps, 1, 1);
-
+		
 		// wait for UAV's to write
 		pCommandList->ResourceBarrier(_countof(p1BVHBarrier), p1BVHBarrier);
-		/*
+		
 		// construct the bvh part 2
 		pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P2].Get());
 
 		// launch threads
 		pCommandList->Dispatch(numGrps, 1, 1);
-		*/
+		
 		// sync EVERYTHING
 
 		pCommandList->ResourceBarrier(1,

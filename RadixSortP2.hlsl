@@ -55,9 +55,9 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		uint lookupIndex = groupID.x * DATA_SIZE + index;
 
 		if (radixi & 0x1) // odd
-			BVHTree[sIndex].code = BVHTree[lookupIndex + numObjects].code;
+			BVHTree[sIndex] = BVHTree[lookupIndex + numObjects];
 		else // even
-			BVHTree[sIndex + numObjects].code = BVHTree[lookupIndex].code;
+			BVHTree[sIndex + numObjects] = BVHTree[lookupIndex];
 	}
 
 	// update the radixi

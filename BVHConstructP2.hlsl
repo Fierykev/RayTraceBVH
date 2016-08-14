@@ -27,8 +27,6 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 
 	// atomically add to prevent two threads from entering a node
 	InterlockedAdd(transferBuffer[nodeID - numObjects], 1, value);
-	
-	uint tmp = 0;
 
 	[loop]
 	while (value)
@@ -43,19 +41,10 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		// get the parent
 		nodeID = BVHTree[nodeID].parent;
 
-		if (numObjects * 2 - 1 <= nodeID)
-		{
-			numOnesBuffer[0] = BVH_ERROR_1;
-
-			return;
-		}
-
 		// atomically add to prevent two threads from entering a node
 		if (nodeID != -1)
 			InterlockedAdd(transferBuffer[nodeID - numObjects], 1, value);
 		else
 			return;
-
-		tmp++;
 	}
 }

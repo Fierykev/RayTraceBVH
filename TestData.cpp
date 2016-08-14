@@ -17,7 +17,7 @@ const uint numObjects = DATA_SIZE * NUM_GRPS;
 
 NODE nodes[numObjects * 2 - 1];
 
-uint sortedCodes[DATA_SIZE * NUM_GRPS], backbufferCodes[DATA_SIZE * NUM_GRPS], codeData[NUM_GRPS][DATA_SIZE];
+NODE sortedCodes[DATA_SIZE * NUM_GRPS], backbufferCodes[DATA_SIZE * NUM_GRPS], codeData[NUM_GRPS][DATA_SIZE];
 
 // gen data
 uint positionNotPresent[NUM_GRPS][DATA_SIZE], positionPresent[NUM_GRPS][DATA_SIZE];
@@ -298,8 +298,6 @@ NODE* constructDebugTree()
 {
 	// radix sort
 
-	uint sum = 0;
-
 	for (uint i = 0; i < DATA_SIZE; i++)
 	{
 		for (uint j = 0; j < NUM_GRPS; j++)
@@ -313,12 +311,10 @@ NODE* constructDebugTree()
 				);
 
 			// randomly set the bounding box
-			nodes[i].bbMin = point;
-			nodes[i].bbMax = float3(point.y, point.z, point.x);
+			codeData[j][i].bbMin = point;
+			codeData[j][i].bbMax = float3(point.y, point.z, point.x);
 
-			codeData[j][i] = calcMortonCode((float*)&point); //rand();
-
-			sum += !(codeData[j][i] & (1 << 2));
+			codeData[j][i].code = calcMortonCode((float*)&point); //rand();
 		}
 	}
 
@@ -331,7 +327,7 @@ NODE* constructDebugTree()
 				for (uint groupThreadID = 0; groupThreadID < DATA_SIZE / 2; groupThreadID++)
 				{
 					// store the inverted version of the important bit
-					positionNotPresent[j][groupThreadID * 2 + loadi] = !(codeData[j][groupThreadID * 2 + loadi] & (1 << radixi));
+					positionNotPresent[j][groupThreadID * 2 + loadi] = !(codeData[j][groupThreadID * 2 + loadi].code & (1 << radixi));
 				}
 			}
 		}
@@ -396,7 +392,7 @@ NODE* constructDebugTree()
 					int index = groupThreadID * 2 + loadi;
 
 					positionPresent[j][index] =
-						((codeData[j][groupThreadID * 2 + loadi] & (1 << radixi)) ?
+						((codeData[j][groupThreadID * 2 + loadi].code & (1 << radixi)) ?
 							positionPresent[j][index] :
 							positionNotPresent[j][index] + numPrecOnes[j]);
 				}
@@ -416,14 +412,14 @@ NODE* constructDebugTree()
 					//	indexData[positionPresent[index] * 3 + indexi] =
 					//		indexData[(groupThreadID.x + loadi) * 3 * 2 + loadi];
 					//positionPresent[index]
-					sortedCodes[positionPresent[j][index]] = j * DATA_SIZE + index;// codeData[j][index];
+					sortedCodes[positionPresent[j][index]].code = j * DATA_SIZE + index;// codeData[j][index];
 				}
 			}
 		}
 
 		for (uint i = 0; i < NUM_GRPS * DATA_SIZE; i++)
 		{
-			uint x0 = (sortedCodes[i]) / DATA_SIZE, y0 = (sortedCodes[i]) % DATA_SIZE;
+			uint x0 = (sortedCodes[i].code) / DATA_SIZE, y0 = (sortedCodes[i].code) % DATA_SIZE;
 			backbufferCodes[i] = codeData[x0][y0];
 		}
 
@@ -443,7 +439,7 @@ NODE* constructDebugTree()
 			x1 = i / DATA_SIZE, y1 = i % DATA_SIZE;
 
 		//if ((codeData[x0][y0] & (1 << radixi))  > (codeData[x1][y1] & (1 << radixi))) //if ((sortedCodes[i - 1] & (1 << radixi)) > (sortedCodes[i] & (1 << radixi)))
-		if ((codeData[x0][y0]) >(codeData[x1][y1]))
+		if ((codeData[x0][y0].code) > (codeData[x1][y1].code))
 			printf("ERR\n");
 	}
 
@@ -453,7 +449,9 @@ NODE* constructDebugTree()
 	{
 		uint x0 = i / DATA_SIZE, y0 = i % DATA_SIZE;
 
-		nodes[i].code = codeData[x0][y0];
+		nodes[i].code = codeData[x0][y0].code;
+		nodes[i].bbMin = codeData[x0][y0].bbMin;
+		nodes[i].bbMax = codeData[x0][y0].bbMax;
 		nodes[i].childL = -1;
 		nodes[i].childR = -1;
 	}
@@ -488,9 +486,6 @@ NODE* constructDebugTree()
 
 	// set root to -1
 	nodes[numObjects].parent = -1;
-	cout << nodes[6391].childR << " " << numObjects + 500 << endl;
-
-	return nodes;
 
 	// compute the bounding box
 

@@ -1,6 +1,11 @@
 #include <RadixSortGlobal.hlsl>
 #include <ErrorGlobal.hlsl>
 
+bool float3Compare(float3 a, float3 b)
+{
+	return (a.x == b.x && a.y == b.y && a.z == b.z);
+}
+
 [numthreads(1, 1, 1)]
 void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
@@ -31,10 +36,10 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 			//numOnesBuffer[0] = BVH_ERROR_1;
 
 		
-		//uint i = 0;
-		for (uint i = 0; i < numObjects * 2 - 1; i++)
-		{//debugData[i].parent
-			if (debugData[i].parent != BVHTree[i].parent)//debugData[i].parent != BVHTree[i].parent)
+		for (uint i = 0; i < numObjects; i++)
+		{
+			if (!float3Compare(debugData[i].bbMin, BVHTree[i].bbMin))
+				//|| !float3Compare(debugData[i].bbMax, BVHTree[i].bbMax))
 				debugVar[0] = BVH_ERROR_1;
 		}
 		
