@@ -1,4 +1,4 @@
-#include <RadixSortGlobal.hlsl>
+#include <RayTraceGlobal.hlsl>
 #include <ErrorGlobal.hlsl>
 
 bool float3Compare(float3 a, float3 b)

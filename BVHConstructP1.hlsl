@@ -1,5 +1,4 @@
-#include <RadixSortGlobal.hlsl>
-#include <ErrorGlobal.hlsl>
+#include <RayTraceGlobal.hlsl>
 
 /*
  Since BVH construction only multiplies by +/- 1 (direction), this macro computes the result

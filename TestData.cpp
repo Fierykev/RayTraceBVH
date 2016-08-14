@@ -493,9 +493,6 @@ NODE* constructDebugTree()
 	for (uint i = 0; i < DATA_SIZE * NUM_GRPS; i++)
 		transferBuffer[i] = 0;
 
-	uint maximizeLoop = 0;
-	uint maxLoop = 0;
-
 	for (uint threadID = 0; threadID < DATA_SIZE * NUM_GRPS; threadID++)
 	{
 		int nodeID = nodes[threadID].parent;
@@ -504,8 +501,6 @@ NODE* constructDebugTree()
 
 		// atomically add to prevent two threads from entering a node
 		InterlockedAdd(transferBuffer[nodeID - numObjects], 1, value);
-
-		maxLoop = 0;
 
 		while (value)
 		{
@@ -524,11 +519,7 @@ NODE* constructDebugTree()
 				InterlockedAdd(transferBuffer[nodeID - numObjects], 1, value);
 			else
 				break;
-
-			maxLoop++;
 		}
-
-		maximizeLoop = max(maximizeLoop, maxLoop);
 	}
 
 	return nodes;

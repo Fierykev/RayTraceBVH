@@ -1,4 +1,4 @@
-#include <RadixSortGlobal.hlsl>
+#include <RayTraceGlobal.hlsl>
 
 /**************************************
 PREFIX SUM

@@ -1,5 +1,4 @@
-#include <RadixSortGlobal.hlsl>
-#include <ErrorGlobal.hlsl>
+#include <RayTraceGlobal.hlsl>
 
 /**
 WARNING THE BELOW CODE IS HIGHLY DIVERGENT.

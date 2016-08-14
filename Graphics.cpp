@@ -230,7 +230,7 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceBVHPS.cso", dataPS));
 
-	ThrowIfFailed(ReadCSO("../x64/Debug/GenMortonCodes.cso", dataCS[CS_MORTON_CODES]));
+	ThrowIfFailed(ReadCSO("../x64/Debug/MortonCodes.cso", dataCS[CS_MORTON_CODES]));
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/RadixSortP1.cso", dataCS[CS_RADIX_SORT_P1]));
 
@@ -252,7 +252,7 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Release/RayTraceBVHPS.cso", dataPS));
 
-	ThrowIfFailed(ReadCSO("../x64/Release/GenMortonCodes.cso", dataCS[CS_MORTON_CODES]));
+	ThrowIfFailed(ReadCSO("../x64/Release/MortonCodes.cso", dataCS[CS_MORTON_CODES]));
 
 	ThrowIfFailed(ReadCSO("../x64/Release/RadixSortP1.cso", dataCS[CS_RADIX_SORT_P1]));
 

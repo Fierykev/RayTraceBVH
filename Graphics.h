@@ -108,6 +108,9 @@ private:
 
 		// bounding box calc
 		XMFLOAT3 bbMin, bbMax;
+
+		// index start value
+		UINT index;
 	};
 
 	struct RESTART_BUFFER

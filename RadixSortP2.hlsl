@@ -1,4 +1,4 @@
-#include <RadixSortGlobal.hlsl>
+#include <RayTraceGlobal.hlsl>
 
 [numthreads(NUM_THREADS, 1, 1)]
 void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)

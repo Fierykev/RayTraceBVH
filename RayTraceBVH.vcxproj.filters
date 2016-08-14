@@ -37,6 +37,9 @@
     <Filter Include="Source Files\TestData">
       <UniqueIdentifier>{d5bbfd26-8e01-4c9f-84db-8f1eecaed2b8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\HLSL\Ray Tracing\Traversal">
+      <UniqueIdentifier>{a0020a27-8e3b-4375-9adb-f488649e4ae5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -100,9 +103,6 @@
     <FxCompile Include="RadixSortTest.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
-    <FxCompile Include="GenMortonCodes.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </FxCompile>
     <FxCompile Include="BVHConstructTest.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
     </FxCompile>
@@ -115,12 +115,18 @@
     <FxCompile Include="RadixSortP1.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
+    <FxCompile Include="RayTraceTraversal.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
+    </FxCompile>
+    <FxCompile Include="MortonCodes.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="RadixSortGlobal.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </None>
     <None Include="ErrorGlobal.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </None>
+    <None Include="RayTraceGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
     </None>
   </ItemGroup>

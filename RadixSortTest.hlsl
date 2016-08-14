@@ -1,4 +1,4 @@
-#include <RadixSortGlobal.hlsl>
+#include <RayTraceGlobal.hlsl>
 #include <ErrorGlobal.hlsl>
 
 [numthreads(1, 1, 1)]

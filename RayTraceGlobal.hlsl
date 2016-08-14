@@ -15,6 +15,9 @@ struct NODE
 
 	// bounding box calc
 	float3 bbMin, bbMax;
+
+	// index start value
+	uint index;
 };
 
 struct VERTEX

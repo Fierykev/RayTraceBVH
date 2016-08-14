@@ -45,6 +45,9 @@ struct NODE
 
 	// bounding box calc
 	float3 bbMin, bbMax;
+
+	// index start value
+	uint index;
 };
 
 NODE* constructDebugTree();
