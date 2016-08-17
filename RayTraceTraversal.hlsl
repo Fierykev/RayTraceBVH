@@ -1,4 +1,5 @@
 #include <RayTraceGlobal.hlsl>
+#include <RayTraceRender.hlsl>
 
 #define EPSILON .00001
 

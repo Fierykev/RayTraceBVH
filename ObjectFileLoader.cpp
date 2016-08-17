@@ -67,15 +67,12 @@ ObjLoader::~ObjLoader()
 
 void ObjLoader::Base_Mat(Material *mat)
 {
-	ZeroMemory(mat, sizeof(mat)); // allocate memory
-
 	mat->ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.f);
 	mat->diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.f);
 	mat->specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.f);
 	mat->shininess = 0;
 	mat->alpha = 1.0f;
 	mat->specularb = false;
-	mat->pTextureRV12 = NULL;
 }
 
 void ObjLoader::Material_File(string filename, string matfile, unsigned long* tex_num, ID3D12Device* Device)
@@ -184,20 +181,17 @@ void ObjLoader::Material_File(string filename, string matfile, unsigned long* te
 				ptr += 7;// move address up
 
 				material.at(*tex_num).texture_path = directory + ptr; // the material file
-
 																	  // load the file
-
 																	  // convert to a LPWSTR
 
-				wstring wstr_;
-				wstr_.assign(material.at(*tex_num).texture_path.begin(), material.at(*tex_num).texture_path.end());
-				LPWSTR LPWSTR_ = const_cast<LPWSTR>(wstr_.c_str());
-
-				// TODO: add texture support
-				//if (FAILED(D3DX12CreateShaderResourceViewFromFile(Device, LPWSTR_, NULL, NULL, &material.at(*tex_num).pTextureRV12, NULL))) // create the texture
-				//{
-					//printf("Error (OBJECT LOADER): Cannot Load Image File- %s\n", material.at(*tex_num).texture_path.c_str());
-				//}
+				wstring filename;
+				filename.assign(material.at(*tex_num).texture_path.begin(), material.at(*tex_num).texture_path.end());
+				
+				// load in the texture
+				if (material.at(*tex_num).image.loadImage(filename.c_str())) // create the texture
+				{
+					cout << "Error (OBJECT LOADER): Cannot Load Image File- " << material.at(*tex_num).texture_path.c_str() << endl;
+				}
 			}
 		}
 
@@ -205,7 +199,7 @@ void ObjLoader::Material_File(string filename, string matfile, unsigned long* te
 	}
 	else
 	{
-		printf("Error (OBJECT LOADER): Cannot Find Material File- %s\n", matfile.c_str());;
+		cout << "Error (OBJECT LOADER): Cannot Find Material File- " << matfile.c_str() << endl;
 	}
 }
 
@@ -439,30 +433,6 @@ HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device)
 
 	Load_Geometry(filename, Device);
 
-	// Load the materials
-	const int ERROR_VALUE = 1;
-
-	for (unsigned long i = 0; i < material.size(); i++)
-	{
-		Material *pMaterial = &material.at(i);
-		if (pMaterial->texture_path[0] != '\0') // this array holds data
-		{
-			pMaterial->pTextureRV12 = (D3D12_SUBRESOURCE_DATA*)ERROR_VALUE; // it equals to an error value
-
-																			  // TODO: Check if the file exists first
-			{
-				// convert string to WCHAR
-
-				wstring wstr_;
-				wstr_.assign(pMaterial->texture_path.begin(), pMaterial->texture_path.end());
-				LPWSTR LPWSTR_ = const_cast<LPWSTR>(wstr_.c_str());
-
-				// TODO: LOAD TEXTURE
-				//DXUTGetGlobalResourceCache().CreateTextureFromFile(Device, Context, LPWSTR_, &pMaterial->pTextureRV11, false);
-			}
-		}
-	}
-
 	// Now let's place the object mesh into the buffers structure
 
 	// Setup vertex buffer
@@ -505,20 +475,19 @@ HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device)
 	index_buffer.BufferLocation = mesh_indices->GetGPUVirtualAddress();
 	index_buffer.Format = getIndexFormat();
 	index_buffer.SizeInBytes = sizeof(unsigned int) * getNumIndices();
-/*	
-	float maxV = 0;
-
-	for (int i = 0; i < getNumVertices(); i++)
-		maxV = max(vertex_final_array[i].position.z, maxV);
-	//2422
-	for (int i = 0; i < getNumVertices(); i++)
-		if (maxV == vertex_final_array[i].position.z)
-			printf("%i\n", i);
-
-	printf("%f\n", maxV);
-	printf("%i\n", vx_array_i[3]);
-
-	printf("%f", vertex_final_array[2444].position.z);*/
 	
 	return S_OK;
+}
+
+void ObjLoader::UploadTexture(ID3D12GraphicsCommandList* commandList)
+{
+	for (size_t i = 0; i < material.size(); i++)
+	{
+		Material *pMaterial = &material.at(i);
+		if (pMaterial->texture_path[0] != '\0') // holds the path to the texture
+		{
+			// send over the texture
+			pMaterial->image.uploadTexture(commandList);
+		}
+	}
 }

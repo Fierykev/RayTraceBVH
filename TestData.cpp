@@ -506,6 +506,8 @@ DebugNode* constructDebugTree(VERTEX* pverts, uint* pindices, uint pnumIndices,
 	XMMATRIX* pworld, XMMATRIX* pworldViewProjection,
 	uint screenWidth, uint screenHeight)
 {
+	return BVHTree;
+
 	verts = pverts;
 	indices = pindices;
 	numIndices = pnumIndices;
@@ -798,8 +800,6 @@ DebugNode* constructDebugTree(VERTEX* pverts, uint* pindices, uint pnumIndices,
 				break;
 		}
 	}
-
-	return BVHTree;
 
 	// run ray traversal
 	Ray ray;

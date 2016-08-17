@@ -43,6 +43,9 @@
     <Filter Include="Header Files\HLSL\Ray Tracing\TMP">
       <UniqueIdentifier>{57bbee66-2902-4f7d-a1f1-f9a1ae56ec0a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Image">
+      <UniqueIdentifier>{0a8fc937-aa12-439b-b5bc-c92b653a42ec}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -68,6 +71,9 @@
     </ClCompile>
     <ClCompile Include="SaveBMP.cpp">
       <Filter>Header Files\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Image.cpp">
+      <Filter>Source Files\Image</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -97,6 +103,9 @@
     </ClInclude>
     <ClInclude Include="SaveBMP.h">
       <Filter>Header Files\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Image.h">
+      <Filter>Source Files\Image</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -140,6 +149,9 @@
     </None>
     <None Include="RayTraceGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
+    </None>
+    <None Include="RayTraceRender.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
     </None>
   </ItemGroup>
 </Project>

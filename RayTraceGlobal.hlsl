@@ -44,6 +44,17 @@ struct VERTEX
 	float2 texcoord;
 };
 
+struct MATERIAL
+{
+	float4 ambient;
+	float4 diffuse;
+	float4 specular;
+
+	int shininess;
+	float alpha;
+	bool specularb;
+};
+
 struct Triangle
 {
 	VERTEX verts[3];
@@ -55,14 +66,14 @@ struct ColTri
 	float distance;
 	Triangle tri;
 };
-/*
+
 cbuffer WORLD_POS : register(b0)
 {
-	matrix worldViewProjection : packoffset(c0);
-	matrix world : packoffset(c4);
-};*/
+	matrix worldViewProjection;
+	matrix world;
+};
 
-cbuffer RAY_TRACE_BUFFER : register(b0)
+cbuffer RAY_TRACE_BUFFER : register(b1)
 {
 	// pack 1
 	uint numGrps, numObjects;
@@ -74,14 +85,12 @@ cbuffer RAY_TRACE_BUFFER : register(b0)
 	
 	// pack 3
 	float3 sceneBBMax;
-
-	matrix worldViewProjection;
-	matrix world;
 };
 
 StructuredBuffer<VERTEX> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
-StructuredBuffer<NODE> debugData : register(t2);
+StructuredBuffer<MATERIAL> mat : register(t2);
+StructuredBuffer<NODE> debugData : register(t3);
 
 RWStructuredBuffer<NODE> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);

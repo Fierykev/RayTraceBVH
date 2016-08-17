@@ -6,6 +6,7 @@
 #include <wrl.h>
 #include <DirectXMath.h>
 #include "Helper.h"
+#include "Image.h"
 
 // loading files
 
@@ -49,7 +50,7 @@ struct Material
 
 	// DirectX Specific
 
-	D3D12_SUBRESOURCE_DATA* pTextureRV12;
+	Image image;
 };
 
 struct Vertex
@@ -96,9 +97,10 @@ public:
 
 	~ObjLoader(); // destruction method
 
-	HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device); // Load the object with its materials
-
+	HRESULT Load(char *filename, ID3D12Device* Device); // Load the object with its materials
 																   // get the number of materials used
+
+	void UploadTexture(ID3D12GraphicsCommandList* commandList);
 
 	const size_t ObjLoader::getMat_Num()
 	{

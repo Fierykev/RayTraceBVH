@@ -1,8 +1,9 @@
 #include <d3d12.h>
 #include <fstream>
 #include <d3dcompiler.h>
-#include "Helper.h"
 #include <wrl.h>
+
+#include "Helper.h"
 
 using namespace std;
 using namespace Microsoft::WRL;
@@ -19,6 +20,7 @@ HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szS
 	HRESULT hr = S_OK;
 
 	DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
+
 #if defined( DEBUG ) || defined( _DEBUG )
 	// Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
 	// Setting this flag improves the shader debugging experience, but still allows 

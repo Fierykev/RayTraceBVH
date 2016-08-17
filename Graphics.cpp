@@ -1,4 +1,5 @@
 #include <d3dcompiler.h>
+#include <iostream>
 #include "d3dx12.h"
 #include "Graphics.h"
 #include "Helper.h"
@@ -7,7 +8,7 @@
 
 // TMP
 #include "TestData.h"
-#include <iostream>
+
 #include <ctime>
 
 #define DATA_SIZE 256
@@ -38,6 +39,18 @@ void Graphics::onInit()
 
 void Graphics::onUpdate()
 {
+	// update world, view, proj
+
+	world = XMMatrixIdentity();
+	view = XMMatrixLookAtLH(eye, at, up);
+	projection = XMMatrixPerspectiveFovLH(XM_PI / 4, 1, 1, 1000.0);
+	worldViewProjection = world * view * projection;
+
+	worldPosCB->worldViewProjection =
+		XMMatrixTranspose(worldViewProjection);
+	worldPosCB->world =
+		XMMatrixTranspose(world);
+
 	// run the compute bbh
 
 	computeBVH();
@@ -283,10 +296,7 @@ void Graphics::loadAssets()
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, numSRVHeaps, 0);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, numUAVHeaps, 0);
 	rootParameters[rpCB0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-	//rootParameters[rpCB1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-	//rootParameters[rpCB1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-	//InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
-	//rootParameters[rpCB].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
+	rootParameters[rpCB1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
 	rootParameters[rpSRV].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 	rootParameters[rpUAV].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
 
@@ -341,10 +351,6 @@ void Graphics::loadAssets()
 
 		ThrowIfFailed(device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&computeStateCS[i])));
 	}
-
-	// create command list
-
-	ThrowIfFailed(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[frameIndex].Get(), nullptr, IID_PPV_ARGS(&commandList)));
 
 	// UAV
 
@@ -417,7 +423,7 @@ void Graphics::loadAssets()
 		IID_PPV_ARGS(&debugBuffer)));
 
 	// constant buffers
-	/*
+	
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
@@ -425,14 +431,14 @@ void Graphics::loadAssets()
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&bufferCB[0])));
-		*/
+		
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer((sizeof(RAY_TRACE_BUFFER) + 255) & ~255),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&bufferCB[0])));
+		IID_PPV_ARGS(&bufferCB[1])));
 
 	// setup plane to trick PS into rendering the ray tracer output
 
@@ -477,16 +483,6 @@ void Graphics::loadAssets()
 	// set up zero buffer
 
 	// create camera TODO: FIX THIS
-	XMMATRIX world, view, projection, worldViewProjection;
-
-	XMVECTOR eye{ 0.0f, 10.0f, -100.0f };
-	XMVECTOR at{ 0.0f, 0.0f, 0.0f };
-	XMVECTOR up{ 0.0f, 1.f, 0.0f };
-
-	world = XMMatrixIdentity();
-	view = XMMatrixLookAtLH(eye, at, up);
-	projection = XMMatrixPerspectiveFovLH(XM_PI / 4, 1, 1, 1000.0);
-	worldViewProjection = world * view * projection;
 	
 	CD3DX12_RANGE readRange(0, 0);
 	
@@ -531,23 +527,21 @@ void Graphics::loadAssets()
 	// set up the constant buffer
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cdesc;
-	/*
+	
 	cdesc.BufferLocation = bufferCB[0]->GetGPUVirtualAddress();
 	cdesc.SizeInBytes = (sizeof(WORLD_POS) + 255) & ~255;
 	
 	// map resources for upload
+	// no unmap since this resource is updated constantly
 	bufferCB[0]->Map(0, &readRange, (void**)&worldPosCB);
-	worldPosCB->worldViewProjection =
-		XMMatrixTranspose(worldViewProjection);
-	worldPosCB->world =
-		XMMatrixTranspose(world);
-	bufferCB[0]->Unmap(0, nullptr);
-	*/
-	cdesc.BufferLocation = bufferCB[0]->GetGPUVirtualAddress();
+
+	//bufferCB[0]->Unmap(0, nullptr);
+	
+	cdesc.BufferLocation = bufferCB[1]->GetGPUVirtualAddress();
 	cdesc.SizeInBytes = (sizeof(RAY_TRACE_BUFFER) + 255) & ~255;
 	
 	// map resources for upload
-	bufferCB[0]->Map(0, &readRange, (void**)&rayTraceCB);
+	bufferCB[1]->Map(0, &readRange, (void**)&rayTraceCB);
 	rayTraceCB->numGrps = numGrps;
 	rayTraceCB->numObjects = numGrps * DATA_SIZE;
 	rayTraceCB->screenWidth = width;
@@ -556,12 +550,7 @@ void Graphics::loadAssets()
 	rayTraceCB->sceneBBMax = XMFLOAT3(36, 42, 44);
 	rayTraceCB->sceneBBMin = XMFLOAT3(-51, -2, -43);
 
-	rayTraceCB->worldViewProjection =
-		XMMatrixTranspose(worldViewProjection);
-	rayTraceCB->world =
-		XMMatrixTranspose(world);
-
-	bufferCB[0]->Unmap(0, nullptr);
+	bufferCB[1]->Unmap(0, nullptr);
 
 	// map vertex plain data for upload
 
@@ -642,6 +631,12 @@ void Graphics::loadAssets()
 	uavHandle0.Offset(1, csuDescriptorSize);
 	device->CreateUnorderedAccessView(bufferCS[UAV_DEBUG_VAR].Get(), nullptr, &uavDesc, uavHandle0);
 
+	// create command list
+
+	ThrowIfFailed(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[frameIndex].Get(), nullptr, IID_PPV_ARGS(&commandList)));
+
+	obj.UploadTexture(commandList.Get());
+
 	// close the command list until things are added
 
 	ThrowIfFailed(commandList->Close());
@@ -688,7 +683,7 @@ void Graphics::computeBVH()
 
 	// set constant buffer
 	csCommandList->SetComputeRootConstantBufferView(rpCB0, bufferCB[0]->GetGPUVirtualAddress());
-	//csCommandList->SetComputeRootConstantBufferView(rpCB1, bufferCB[1]->GetGPUVirtualAddress());
+	csCommandList->SetComputeRootConstantBufferView(rpCB1, bufferCB[1]->GetGPUVirtualAddress());
 
 	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get() };
 	csCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
@@ -696,7 +691,7 @@ void Graphics::computeBVH()
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps + numSRVHeaps, csuDescriptorSize);
-
+	
 	//csCommandList->SetComputeRootDescriptorTable(rpCB, cbvHandle); // constant
 	csCommandList->SetComputeRootDescriptorTable(rpSRV, srvHandle); // input
 	csCommandList->SetComputeRootDescriptorTable(rpUAV, uavHandle); // output
@@ -803,7 +798,7 @@ void Graphics::computeBVH()
 
 	// launch threads
 	csCommandList->Dispatch(xThreads, yThreads, 1);
-	
+	/*
 	// sync EVERYTHING
 
 	csCommandList->ResourceBarrier(1,
@@ -817,7 +812,7 @@ void Graphics::computeBVH()
 	// allow the texture to be read by the pixels 
 	//csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferCS[UAV_RENDER_TEXTURE].Get(),
 		//D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-		
+		*/
 	// Close and execute the command list.
 	ThrowIfFailed(csCommandList->Close());
 	ID3D12CommandList* pcsCommandLists[] = { csCommandList };
@@ -856,7 +851,7 @@ void Graphics::populateCommandList()
 	// set constant buffer
 
 	commandList->SetGraphicsRootConstantBufferView(rpCB0, bufferCB[0]->GetGPUVirtualAddress());
-	//commandList->SetGraphicsRootConstantBufferView(rpCB1, bufferCB[1]->GetGPUVirtualAddress());
+	commandList->SetGraphicsRootConstantBufferView(rpCB1, bufferCB[1]->GetGPUVirtualAddress());
 
 	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
@@ -947,7 +942,27 @@ void Graphics::moveToNextFrame()
 
 void Graphics::onKeyDown(UINT8 key)
 {
+	
 
+	switch (key)
+	{
+	case VK_LEFT:
+		eye = at + XMVector4Transform((eye - at),
+			XMMatrixRotationY(-CAM_DELTA));
+		break;
+	case VK_RIGHT:
+		eye = at + XMVector4Transform((eye - at),
+			XMMatrixRotationY(CAM_DELTA));
+		break;
+	case VK_UP:
+		eye = at + XMVector4Transform((eye - at),
+			XMMatrixRotationX(CAM_DELTA));
+		break;
+	case VK_DOWN:
+		eye = at + XMVector4Transform((eye - at),
+			XMMatrixRotationX(-CAM_DELTA));
+		break;
+	}
 }
 
 void Graphics::onKeyUp(UINT8 key)

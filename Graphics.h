@@ -9,6 +9,8 @@
 
 using namespace Microsoft::WRL;
 
+#define CAM_DELTA .1f
+
 class Graphics : public Manager
 {
 public:
@@ -134,12 +136,12 @@ private:
 	{
 		UINT restart;
 	};
-	/*
+	
 	struct WORLD_POS
 	{
 		XMMATRIX worldViewProjection;
 		XMMATRIX world;
-	};*/
+	};
 
 	struct RAY_TRACE_BUFFER
 	{
@@ -148,21 +150,29 @@ private:
 		XMFLOAT3 sceneBBMin;
 		UINT numIndices;
 		XMFLOAT3 sceneBBMax;
-		XMMATRIX worldViewProjection;
-		XMMATRIX world;
 	};
 
 	// constant buffers
-	//WORLD_POS* worldPosCB;
+	WORLD_POS* worldPosCB;
 	RAY_TRACE_BUFFER* rayTraceCB;
 
 	RESTART_BUFFER* bufferRestartData;
+
+	// view params
+	XMMATRIX world, view, projection, worldViewProjection;
+
+	const XMVECTOR origEye{ 0.0f, 10.0f, -100.0f };
+	XMVECTOR eye = origEye;
+	XMVECTOR at{ 0.0f, 0.0f, 0.0f };
+	XMVECTOR up{ 0.0f, 1.f, 0.0f };
+
+	float yAngle = 0, xAngle = 0;
 
 	// locations in the root parameter table
 	enum RootParameters : UINT32
 	{
 		rpCB0 = 0,
-		//rpCB1,
+		rpCB1,
 		rpSRV,
 		rpUAV,
 		rpCount
