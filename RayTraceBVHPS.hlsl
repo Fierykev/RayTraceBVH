@@ -1,12 +1,20 @@
+#include <RayTraceGlobal.hlsl>
+#include <ErrorGlobal.hlsl>
+
 struct PSINPUT
 {
-	float3 normal : NORMAL;
-	float2 texcoord : TEXCOORD0;
 	float4 position : SV_POSITION;
-	float4 worldpos : TEXCOORD1;
 };
 
 float4 main(PSINPUT In) : SV_TARGET
 {
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+	// get the pixel corresponding the screen position
+
+	uint index = (screenHeight - In.position.y) * screenWidth
+		+ (In.position.x - (screenWidth >> 1));
+
+	return outputTex[index];
+
+	//return debugVar[0] ? float4(1, 0, 0, 1) :
+		//float4(0, 1, 0, 1);
 }

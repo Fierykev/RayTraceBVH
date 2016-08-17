@@ -8,8 +8,6 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	{
 		uint offset = 0;
 
-		numOnesBuffer[0] = RS_NO_ERROR;
-
 		uint greaterCheck = 0;
 		
 		for (uint i = 1; i < DATA_SIZE * numGrps; i++)
@@ -18,13 +16,13 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 			
 			if (BVHTree[i - 1 + offset].code > BVHTree[i + offset].code)
 			{
-				numOnesBuffer[0] = RS_ERROR_1;
+				debugVar[0] = RS_ERROR_1;
 
 				break;
 			}
 		}
 
 		if (!greaterCheck)
-			numOnesBuffer[0] = RS_ERROR_2;
+			debugVar[0] = RS_ERROR_2;
 	}
 }

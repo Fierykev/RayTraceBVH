@@ -189,8 +189,8 @@ void Graphics::loadPipeline()
 
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
 	cbvHeapDesc.NumDescriptors = numSRVHeaps + numUAVHeaps + numCBVHeaps;
-	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&csuHeap)));
 	
 	csuDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -217,9 +217,9 @@ void Graphics::loadAssets()
 	obj.Load("Obj/Test.obj", device.Get());
 
 	// setup buffers for shaders
-	const UINT numThreads = 128;
-	/*const UINT */numGrps = (UINT) ceil(obj.getNumIndices() / (double)DATA_SIZE);
-	
+	const UINT numThreads = 128; // TODO: can decrease number of threads
+	/*const UINT */numGrps = (UINT)ceil(obj.getNumIndices() / (double)DATA_SIZE);
+
 	// load the shaders
 	string dataVS, dataPS, dataCS[CS_COUNT];
 
@@ -243,6 +243,8 @@ void Graphics::loadAssets()
 	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstructP2.cso", dataCS[CS_BVH_CONSTRUCTION_P2]));
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstructTest.cso", dataCS[CS_BVH_CONSTRUCTION_TEST]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceTraversal.cso", dataCS[CS_RAY_TRACE_TRAVERSAL]));
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
@@ -265,20 +267,23 @@ void Graphics::loadAssets()
 	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstructP2.cso", dataCS[CS_BVH_CONSTRUCTION_P2]));
 
 	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstructTest.cso", dataCS[CS_BVH_CONSTRUCTION_TEST]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/RayTraceTraversal.cso", dataCS[CS_RAY_TRACE_TRAVERSAL]));
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
 #endif
-	
+
 	// setup constant buffer and descriptor tables
-	
+
 	CD3DX12_DESCRIPTOR_RANGE ranges[2];
-	CD3DX12_ROOT_PARAMETER rootParameters[3];
+	CD3DX12_ROOT_PARAMETER rootParameters[rpCount];
 
 	//ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, numCBVHeaps, 0);
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, numSRVHeaps, 0);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, numUAVHeaps, 0);
 	rootParameters[rpCB0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+	//rootParameters[rpCB1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
 	//rootParameters[rpCB1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
 	//InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 	//rootParameters[rpCB].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
@@ -306,9 +311,7 @@ void Graphics::loadAssets()
 
 	const D3D12_INPUT_ELEMENT_DESC layout[] =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -342,9 +345,9 @@ void Graphics::loadAssets()
 	// create command list
 
 	ThrowIfFailed(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[frameIndex].Get(), nullptr, IID_PPV_ARGS(&commandList)));
-		
+
 	// UAV
-	
+
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
@@ -380,13 +383,21 @@ void Graphics::loadAssets()
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(XMFLOAT4) * width * height, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		nullptr,
+		IID_PPV_ARGS(&bufferCS[UAV_OUTPUT_TEX])));
+
+	ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
 		IID_PPV_ARGS(&bufferCS[UAV_DEBUG_VAR])));
 
 	// zero buffer
-	
+
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
@@ -400,33 +411,44 @@ void Graphics::loadAssets()
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(NODE) * numGrps * DATA_SIZE * 2 - 1),
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(NODE) * numGrps * DATA_SIZE * 2),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&debugBuffer)));
-		
-	// constant buffer
 
+	// constant buffers
+	/*
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer((sizeof(CONSTANT_BUFFER) + 255) & ~255),
+		&CD3DX12_RESOURCE_DESC::Buffer((sizeof(WORLD_POS) + 255) & ~255),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&bufferCB[0])));
+		*/
+	ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer((sizeof(RAY_TRACE_BUFFER) + 255) & ~255),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&bufferCB[0])));
 
+	// setup plane to trick PS into rendering the ray tracer output
+
+	// setup verts and indices
+
+	ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(XMFLOAT3) * _countof(plainVerts)),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&plainVCB)));
+
 	// setup data to transfer
 
 	// setup vertex data for transfer
-
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-	uavDesc.Buffer.FirstElement = 0;
-	uavDesc.Buffer.NumElements = obj.getNumVertices();
-	uavDesc.Buffer.StructureByteStride = obj.getNumVertices();
-	uavDesc.Buffer.CounterOffsetInBytes = 0;
-	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -437,6 +459,15 @@ void Graphics::loadAssets()
 	srvDesc.Buffer.StructureByteStride = sizeof(Vertex);
 	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+	uavDesc.Buffer.FirstElement = 0;
+	//uavDesc.Buffer.NumElements = ;
+	//uavDesc.Buffer.StructureByteStride = ;
+	uavDesc.Buffer.CounterOffsetInBytes = 0;
+	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+
 	// TODO: check if below is needed
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart());
@@ -445,6 +476,18 @@ void Graphics::loadAssets()
 
 	// set up zero buffer
 
+	// create camera TODO: FIX THIS
+	XMMATRIX world, view, projection, worldViewProjection;
+
+	XMVECTOR eye{ 0.0f, 10.0f, -100.0f };
+	XMVECTOR at{ 0.0f, 0.0f, 0.0f };
+	XMVECTOR up{ 0.0f, 1.f, 0.0f };
+
+	world = XMMatrixIdentity();
+	view = XMMatrixLookAtLH(eye, at, up);
+	projection = XMMatrixPerspectiveFovLH(XM_PI / 4, 1, 1, 1000.0);
+	worldViewProjection = world * view * projection;
+	
 	CD3DX12_RANGE readRange(0, 0);
 	
 	UINT* boolBufferData;
@@ -453,26 +496,84 @@ void Graphics::loadAssets()
 	ZeroMemory(boolBufferData, sizeof(UINT) * DATA_SIZE * numGrps);
 	zeroBuffer->Unmap(0, nullptr);
 
-	// set up debug buffer
-	debugBuffer->Map(0, &readRange, reinterpret_cast<void**>(&boolBufferData));
-	memcpy(boolBufferData, constructDebugTree(), sizeof(NODE) * DATA_SIZE * numGrps * 2 - 1);
-	debugBuffer->Unmap(0, nullptr);
+	DebugNode* debugNode = constructDebugTree(
+		(VERTEX*)obj.getVertices(), (uint*)obj.getIndices(),
+		obj.getNumIndices(), &world, &worldViewProjection, width, height);
 
+	// set up debug buffer
+	NODE* nodeBufferData;
+
+	debugBuffer->Map(0, &readRange, reinterpret_cast<void**>(&nodeBufferData));
+	for (unsigned int i = 0; i < DATA_SIZE * numGrps * 2; i++)
+	{
+		nodeBufferData[i].bbox.bbMax.x = debugNode[i].bbox.bbMax.x;
+		nodeBufferData[i].bbox.bbMax.y = debugNode[i].bbox.bbMax.y;
+		nodeBufferData[i].bbox.bbMax.z = debugNode[i].bbox.bbMax.z;
+
+		nodeBufferData[i].bbox.bbMin.x = debugNode[i].bbox.bbMin.x;
+		nodeBufferData[i].bbox.bbMin.y = debugNode[i].bbox.bbMin.y;
+		nodeBufferData[i].bbox.bbMin.z = debugNode[i].bbox.bbMin.z;
+
+		nodeBufferData[i].childL = debugNode[i].childL;
+		nodeBufferData[i].childR = debugNode[i].childR;
+
+		nodeBufferData[i].code = debugNode[i].code;
+		
+		nodeBufferData[i].index = debugNode[i].index;
+
+		nodeBufferData[i].parent = debugNode[i].parent;
+	}
+
+	cout << debugNode[DATA_SIZE * numGrps * 2 - 1].code << endl;
+
+	debugBuffer->Unmap(0, nullptr);
+	
 	// set up the constant buffer
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cdesc;
+	/*
 	cdesc.BufferLocation = bufferCB[0]->GetGPUVirtualAddress();
-	cdesc.SizeInBytes = (sizeof(CONSTANT_BUFFER) + 255) & ~255;
-
-	device->CreateConstantBufferView(&cdesc, cbvHandle0);
-
+	cdesc.SizeInBytes = (sizeof(WORLD_POS) + 255) & ~255;
+	
 	// map resources for upload
-	bufferCB[0]->Map(0, &readRange, (void**)&bufferData);
-	bufferData->numGrps = numGrps;
-	bufferData->numObjects = numGrps * DATA_SIZE;
-	bufferData->sceneBBMax = XMFLOAT3(36, 42, 44);
-	bufferData->sceneBBMin = XMFLOAT3(-51, -2, -43);
+	bufferCB[0]->Map(0, &readRange, (void**)&worldPosCB);
+	worldPosCB->worldViewProjection =
+		XMMatrixTranspose(worldViewProjection);
+	worldPosCB->world =
+		XMMatrixTranspose(world);
 	bufferCB[0]->Unmap(0, nullptr);
+	*/
+	cdesc.BufferLocation = bufferCB[0]->GetGPUVirtualAddress();
+	cdesc.SizeInBytes = (sizeof(RAY_TRACE_BUFFER) + 255) & ~255;
+	
+	// map resources for upload
+	bufferCB[0]->Map(0, &readRange, (void**)&rayTraceCB);
+	rayTraceCB->numGrps = numGrps;
+	rayTraceCB->numObjects = numGrps * DATA_SIZE;
+	rayTraceCB->screenWidth = width;
+	rayTraceCB->screenHeight = height;
+	rayTraceCB->numIndices = obj.getNumIndices();
+	rayTraceCB->sceneBBMax = XMFLOAT3(36, 42, 44);
+	rayTraceCB->sceneBBMin = XMFLOAT3(-51, -2, -43);
+
+	rayTraceCB->worldViewProjection =
+		XMMatrixTranspose(worldViewProjection);
+	rayTraceCB->world =
+		XMMatrixTranspose(world);
+
+	bufferCB[0]->Unmap(0, nullptr);
+
+	// map vertex plain data for upload
+
+	XMFLOAT3* vertexBufferData;
+	plainVCB->Map(0, &readRange, (void**)&vertexBufferData);
+	memcpy(vertexBufferData, plainVerts, sizeof(XMFLOAT3) * _countof(plainVerts));
+	plainVCB->Unmap(0, nullptr);
+
+	// setup vertex and index buffer structs
+	plainVB.BufferLocation = plainVCB->GetGPUVirtualAddress();
+	plainVB.StrideInBytes = sizeof(XMFLOAT3);
+	plainVB.SizeInBytes = sizeof(XMFLOAT3) * _countof(plainVerts);
 
 	// setup vertex and index data (srv)
 	device->CreateShaderResourceView(obj.getVertexMappedBuffer(), &srvDesc, srvHandle0);
@@ -480,14 +581,14 @@ void Graphics::loadAssets()
 	// setup index data for transfer
 
 	srvDesc.Buffer.NumElements = (UINT)obj.getNumIndices();
-	srvDesc.Buffer.StructureByteStride = sizeof(unsigned int);
+	srvDesc.Buffer.StructureByteStride = sizeof(UINT);
 	
 	srvHandle0.Offset(1, csuDescriptorSize);
 	device->CreateShaderResourceView(obj.getIndexMappedBuffer(), &srvDesc, srvHandle0);
 
 	// setup debug resource
 
-	srvDesc.Buffer.NumElements = numGrps * DATA_SIZE * 2 - 1;
+	srvDesc.Buffer.NumElements = numGrps * DATA_SIZE * 2;
 	srvDesc.Buffer.StructureByteStride = sizeof(NODE);
 
 	srvHandle0.Offset(1, csuDescriptorSize);
@@ -525,6 +626,13 @@ void Graphics::loadAssets()
 
 	uavHandle0.Offset(1, csuDescriptorSize);
 	device->CreateUnorderedAccessView(bufferCS[UAV_RADIXI_BUFFER].Get(), nullptr, &uavDesc, uavHandle0);
+
+	// create a buffer for the ray tracer output
+	uavDesc.Buffer.NumElements = width * height;
+	uavDesc.Buffer.StructureByteStride = sizeof(XMFLOAT4);
+
+	uavHandle0.Offset(1, csuDescriptorSize);
+	device->CreateUnorderedAccessView(bufferCS[UAV_OUTPUT_TEX].Get(), nullptr, &uavDesc, uavHandle0);
 
 	// debug var
 	
@@ -565,9 +673,6 @@ void Graphics::computeBVH()
 	
 	ComPtr<ID3D12Resource> outputBufferMax, outputBufferMin;
 
-	const UINT numThreads = 128;
-	//const UINT numGrps = ceil(obj.getNumIndices() / (numThreads * 2.f)) - 1; // -1 tmp
-
 	// create compute resources
 
 	D3D12_COMMAND_QUEUE_DESC queueDesc = { D3D12_COMMAND_LIST_TYPE_COMPUTE, 0, D3D12_COMMAND_QUEUE_FLAG_NONE };
@@ -577,46 +682,47 @@ void Graphics::computeBVH()
 	ThrowIfFailed(device->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&threadFences)));
 
 	// set the shader
-	ID3D12GraphicsCommandList* pCommandList = computeCommandList.Get();
+	ID3D12GraphicsCommandList* csCommandList = computeCommandList.Get();
 	
-	pCommandList->SetComputeRootSignature(computeRootSignature.Get());
+	csCommandList->SetComputeRootSignature(computeRootSignature.Get());
 
 	// set constant buffer
-	pCommandList->SetComputeRootConstantBufferView(rpCB0, bufferCB[0]->GetGPUVirtualAddress());
+	csCommandList->SetComputeRootConstantBufferView(rpCB0, bufferCB[0]->GetGPUVirtualAddress());
+	//csCommandList->SetComputeRootConstantBufferView(rpCB1, bufferCB[1]->GetGPUVirtualAddress());
 
 	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get() };
-	pCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	csCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps + numSRVHeaps, csuDescriptorSize);
 
-	//pCommandList->SetComputeRootDescriptorTable(rpCB, cbvHandle); // constant
-	pCommandList->SetComputeRootDescriptorTable(rpSRV, srvHandle); // input
-	pCommandList->SetComputeRootDescriptorTable(rpUAV, uavHandle); // output
+	//csCommandList->SetComputeRootDescriptorTable(rpCB, cbvHandle); // constant
+	csCommandList->SetComputeRootDescriptorTable(rpSRV, srvHandle); // input
+	csCommandList->SetComputeRootDescriptorTable(rpUAV, uavHandle); // output
 
 	// setup the command list
 
 	// reset debug var
 
-	pCommandList->CopyBufferRegion(bufferCS[UAV_DEBUG_VAR].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT));
+	csCommandList->CopyBufferRegion(bufferCS[UAV_DEBUG_VAR].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT));
 	
 	// morton code gen
 
 	// reset to start over
-	pCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
+	csCommandList->CopyBufferRegion(bufferCS[UAV_RADIXI_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * numGrps);
 
-	pCommandList->SetPipelineState(computeStateCS[CS_MORTON_CODES].Get());
-	pCommandList->Dispatch(numGrps, 1, 1); // TODO: ADD BACK NUMGRPS
-		
+	csCommandList->SetPipelineState(computeStateCS[CS_MORTON_CODES].Get());
+	csCommandList->Dispatch(numGrps, 1, 1);
+	
 	// barrier for morton codes and zero buffer
 	const CD3DX12_RESOURCE_BARRIER mortonBarrier[] = {
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()), // bvh tree
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()) // radixi
 	};
 
-	pCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
-
+	csCommandList->ResourceBarrier(_countof(mortonBarrier), mortonBarrier);
+	
 	// barriers for radix sort
 	const CD3DX12_RESOURCE_BARRIER p1Barrier[] = {
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_NUM_ONES_BUFFER].Get()), // numOnesBuffer
@@ -627,78 +733,96 @@ void Graphics::computeBVH()
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RADIXI_BUFFER].Get()), // radixi
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
 	};
-		
+	
 	// run the sort
 	for (unsigned int i = 0; i < 32; i++)
 	{
 		// set state to p1
-		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P1].Get());
+		csCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P1].Get());
 
 		// launch threads
-		pCommandList->Dispatch(numGrps, 1, 1);
+		csCommandList->Dispatch(numGrps, 1, 1);
 
 		// wait for UAV's to write
-		pCommandList->ResourceBarrier(_countof(p1Barrier), p1Barrier);
+		csCommandList->ResourceBarrier(_countof(p1Barrier), p1Barrier);
 			
 		// set state to p2
-		pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
+		csCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_P2].Get());
 
 		// launch threads
-		pCommandList->Dispatch(numGrps, 1, 1);
+		csCommandList->Dispatch(numGrps, 1, 1);
 
 		// wait for UAV's to write
-		pCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
+		csCommandList->ResourceBarrier(_countof(p2Barrier), p2Barrier);
 	}
 	/*
 	// sync EVERYTHING
 
-	pCommandList->ResourceBarrier(1,
+	csCommandList->ResourceBarrier(1,
 		&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
 
 	// run debug (TMP)
 
-	pCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());
-	pCommandList->Dispatch(1, 1, 1);
+	csCommandList->SetPipelineState(computeStateCS[CS_RADIX_SORT_TEST].Get());
+	csCommandList->Dispatch(1, 1, 1);
 	*/
-
 	const CD3DX12_RESOURCE_BARRIER p1BVHBarrier[] = {
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_TRANSFER_BUFFER].Get()), // transfer buffer
 		CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()) // bvh tree
 	};
-		
+	
 	// construct the bvh part 1
-	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P1].Get());
+	csCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P1].Get());
 
 	// clear out automics
-	pCommandList->CopyBufferRegion(bufferCS[UAV_TRANSFER_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * DATA_SIZE * numGrps);
+	csCommandList->CopyBufferRegion(bufferCS[UAV_TRANSFER_BUFFER].Get(), 0, zeroBuffer.Get(), 0, sizeof(UINT) * DATA_SIZE * numGrps);
 
 	// launch threads
-	pCommandList->Dispatch(numGrps, 1, 1);
-		
+	csCommandList->Dispatch(numGrps, 1, 1);
+	
 	// wait for UAV's to write
-	pCommandList->ResourceBarrier(_countof(p1BVHBarrier), p1BVHBarrier);
-		
+	csCommandList->ResourceBarrier(_countof(p1BVHBarrier), p1BVHBarrier);
+	
 	// construct the bvh part 2
-	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P2].Get());
+	csCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_P2].Get());
 
 	// launch threads
-	pCommandList->Dispatch(numGrps, 1, 1);
-	/*
+	csCommandList->Dispatch(numGrps, 1, 1);	
+	
+	csCommandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
+	
+	csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()));
+	
+	// run the ray tracer for init render
+	csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_TRAVERSAL].Get());
+	
+	// get number of dispatches for ray tracing
+	UINT xThreads = (UINT)ceil(width / 32.f);
+	UINT yThreads = (UINT)ceil(height / 32.f);
+
+	// launch threads
+	csCommandList->Dispatch(xThreads, yThreads, 1);
+	
 	// sync EVERYTHING
 
-	pCommandList->ResourceBarrier(1,
+	csCommandList->ResourceBarrier(1,
 		&CD3DX12_RESOURCE_BARRIER::UAV(NULL));
-
+	
 	// run debug (TMP)
 
-	pCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_TEST].Get());
-	pCommandList->Dispatch(1, 1, 1);*/
-
+	csCommandList->SetPipelineState(computeStateCS[CS_BVH_CONSTRUCTION_TEST].Get());
+	csCommandList->Dispatch(1, 1, 1);
+	
+	// allow the texture to be read by the pixels 
+	//csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(bufferCS[UAV_RENDER_TEXTURE].Get(),
+		//D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+		
 	// Close and execute the command list.
-	ThrowIfFailed(pCommandList->Close());
-	ID3D12CommandList* ppCommandLists[] = { pCommandList };
+	ThrowIfFailed(csCommandList->Close());
+	ID3D12CommandList* pcsCommandLists[] = { csCommandList };
 
-	computeCommandQueue->ExecuteCommandLists(1, ppCommandLists);
+	computeCommandQueue->ExecuteCommandLists(1, pcsCommandLists);
 
 	UINT64 m_threadFenceValues = 0;
 	HANDLE m_threadFenceEvents = CreateEvent(nullptr, FALSE, FALSE, nullptr);
@@ -726,8 +850,13 @@ void Graphics::populateCommandList()
 	ThrowIfFailed(commandList->Reset(commandAllocator[frameIndex].Get(), pipelineState.Get()));
 
 	// set the state
-	
+
 	commandList->SetGraphicsRootSignature(rootSignature.Get());
+
+	// set constant buffer
+
+	commandList->SetGraphicsRootConstantBufferView(rpCB0, bufferCB[0]->GetGPUVirtualAddress());
+	//commandList->SetGraphicsRootConstantBufferView(rpCB1, bufferCB[1]->GetGPUVirtualAddress());
 
 	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
@@ -743,7 +872,6 @@ void Graphics::populateCommandList()
 	commandList->SetGraphicsRootDescriptorTable(rpSRV, srvHandle); // input
 	commandList->SetGraphicsRootDescriptorTable(rpUAV, uavHandle); // output
 
-	//commandList->SetGraphicsRootDescriptorTable(rpSRV, csuHandle);
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissorRect);
 
@@ -763,11 +891,10 @@ void Graphics::populateCommandList()
 
 	// draw the object
 
-	commandList->IASetPrimitiveTopology(obj.getPrimativeType());
-	commandList->IASetVertexBuffers(0, 1, obj.getVertexBuffer());
-	commandList->IASetIndexBuffer(obj.getIndexBuffer());
-	commandList->DrawIndexedInstanced((UINT)obj.getNumIndices(), 1, 0, 0, 0);
-	
+	commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	commandList->IASetVertexBuffers(0, 1, &plainVB);
+	commandList->DrawInstanced(_countof(plainVerts), 1, 0, 0);
+
 	// do not present the back buffer
 
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget[frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
@@ -775,7 +902,6 @@ void Graphics::populateCommandList()
 	// close the commands
 
 	ThrowIfFailed(commandList->Close());
-
 }
 
 void Graphics::waitForGpu()

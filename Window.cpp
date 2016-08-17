@@ -85,7 +85,7 @@ LRESULT CALLBACK Window::procWindow(HWND hWnd, UINT message, WPARAM wParam, LPAR
 	case WM_PAINT:
 		if (manager)
 		{
-			clock_t start = clock();
+			//clock_t start = clock();
 
 			manager->onUpdate();
 			manager->onRender();

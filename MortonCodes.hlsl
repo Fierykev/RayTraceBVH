@@ -1,5 +1,11 @@
 #include <RayTraceGlobal.hlsl>
 
+float3 getPosTrans(uint index)
+{
+	return (float3)mul(float4(verts[index].position, 1),
+		worldViewProjection);
+}
+
 /**************************************
 MORTON CODES
 **************************************/
@@ -24,12 +30,12 @@ uint bitTwiddling(in uint var)
 	return var;
 }
 
-uint calcMortonCode(in float3 p)
+uint calcMortonCode(float3 p)
 {
 	uint3 code;
 
 	// multiply out
-	[unroll(3)]
+	//[unroll(3)]
 	for (int i = 0; i < 3; i++)
 	{
 		// change to base .5
@@ -38,20 +44,20 @@ uint calcMortonCode(in float3 p)
 		// clamp between [0, 1024)
 		p[i] = clamp(p[i], 0, 1023);
 
-		code[i] = bitTwiddling(p[i]);
+		code[i] = bitTwiddling((uint)p[i]);
 	}
 
 	// combine codes for the output
 	return code[2] | code[1] << 1 | code[0] << 2;
 }
-
-#ifdef DEBUG
+// TODO: OBV
+//#ifdef DEBUG
 uint rand(uint lfsr)
 {
-	uint bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
-	return lfsr = (lfsr >> 1) | (bit << 15);
+	//uint bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
+	return ((uint)(lfsr / 65536) % 32768);// lfsr = (lfsr >> 1) | (bit << 15);
 }
-#endif
+//#endif
 
 [numthreads(NUM_THREADS, 1, 1)]
 void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
@@ -60,37 +66,56 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	Generate the Morton Codes (load factor of 2)
 	***********************************************/
 
-	//[unroll(2)]
+	float3 bbMin, bbMax;
+	float3 avg;
+
+	float3 vertData;
+
+	uint index, indicesBase;
+
+	// note unroll causes error
+	//[loop]
 	for (uint loadi = 0; loadi < 2; loadi++)
 	{
-		float3 bbMin, bbMax;
-		float3 avg = 0;
+		bbMin = float3(0, 0, 0);
+		bbMax = float3(0, 0, 0);
+		avg = float3(0, 0, 0);
 
-		uint index = (threadID.x << 1) + loadi;
+		index = (threadID.x << 1) + loadi;
+
+		indicesBase = threadID.x * 3 * 2 + loadi * 3;
+
+		// set code to zero
+		BVHTree[index].code = 0;
 
 		// check if data is in bounds
-		if (index < numObjects)
+		if (indicesBase < numIndices)
 		{
 			// bounding box computation	
-			float3 vertData = verts[indices[threadID.x * 3 * 2 + loadi * 3]].position;
+			vertData = getPosTrans(indices[indicesBase]);
 
 			// set the start value
 			bbMin = bbMax = avg = vertData;
 
 			// load in the data (3 indices and 3 verts)
-			[unroll(3)]
+			//[unroll(3)]
 			for (uint sumi = 1; sumi < 3; sumi++)
 			{
-				vertData = verts[indices[threadID.x * 3 * 2 + loadi * 3 + sumi]].position;
+				vertData = getPosTrans(indices[indicesBase + sumi]);
+
+				bbMin = minUnion(bbMin, vertData);
+				bbMax = maxUnion(bbMax, vertData);
 
 				avg += vertData;
-
-				bbMin = min(bbMin, avg);
-				bbMax = max(bbMax, avg);
 			}
 
 			// divide by three to compute the average
 			avg /= 3.f;
+
+#ifndef DEBUG
+			BVHTree[index].code = calcMortonCode((avg - sceneBBMin) /
+				(sceneBBMax - sceneBBMin));
+#endif
 		}
 
 		// place the centroid point in the unit cube and calculate / store the morton code
@@ -105,24 +130,26 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 			rand(rand(rand(pointData))) / rand(pointData)
 			);
 
-		BVHTree[(threadID.x << 1) + loadi].code = calcMortonCode(tmpPoint);
+		BVHTree[index].code = calcMortonCode(tmpPoint);
 
 		// store bounding box info
 		BVHTree[index].bbox.bbMin = tmpPoint;
 		BVHTree[index].bbox.bbMax = float3(tmpPoint.y, tmpPoint.z, tmpPoint.x);
 #else
-		BVHTree[index].code = calcMortonCode((avg - sceneBBMin) / (sceneBBMax - sceneBBMin));
-
 		// store bounding box info
 		BVHTree[index].bbox.bbMin = bbMin;
 		BVHTree[index].bbox.bbMax = bbMax;
 #endif
-
+		//BVHTree[index].code = debugData[index].code;
 		// set children to invalid
 		BVHTree[index].childL = -1;
-		BVHTree[index].childL = -1;
-
+		BVHTree[index].childR = -1;
+		
 		// store vert index data
-		BVHTree[index].index = threadID.x * 3 * 2 + loadi * 3;
+		BVHTree[index].index = indicesBase;
+		BVHTree[index].code = debugData[index].code;
+
+		//BVHTree[index].index = debugData[index].index;
+		//BVHTree[index].bbox = debugData[index].bbox;
 	}
 }

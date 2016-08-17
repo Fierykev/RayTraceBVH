@@ -40,6 +40,9 @@
     <Filter Include="Header Files\HLSL\Ray Tracing\Traversal">
       <UniqueIdentifier>{a0020a27-8e3b-4375-9adb-f488649e4ae5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\HLSL\Ray Tracing\TMP">
+      <UniqueIdentifier>{57bbee66-2902-4f7d-a1f1-f9a1ae56ec0a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -62,6 +65,9 @@
     </ClCompile>
     <ClCompile Include="TestData.cpp">
       <Filter>Source Files\TestData</Filter>
+    </ClCompile>
+    <ClCompile Include="SaveBMP.cpp">
+      <Filter>Header Files\Shader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,6 +94,9 @@
     </ClInclude>
     <ClInclude Include="TestData.h">
       <Filter>Source Files\TestData</Filter>
+    </ClInclude>
+    <ClInclude Include="SaveBMP.h">
+      <Filter>Header Files\Shader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -120,6 +129,9 @@
     </FxCompile>
     <FxCompile Include="MortonCodes.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
+    </FxCompile>
+    <FxCompile Include="SRVTest.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\TMP</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

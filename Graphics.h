@@ -40,16 +40,19 @@ private:
 		CS_BVH_CONSTRUCTION_P1,
 		CS_BVH_CONSTRUCTION_P2,
 		CS_BVH_CONSTRUCTION_TEST,
+		CS_RAY_TRACE_TRAVERSAL,
 		CS_COUNT
 	};
 
 	// setup the 
 	enum BVHUAV : UINT32
 	{
-		UAV_BVHTREE = 0,
+		UAV_VERTS = 0,
+		UAV_BVHTREE,
 		UAV_TRANSFER_BUFFER,
 		UAV_NUM_ONES_BUFFER,
 		UAV_RADIXI_BUFFER,
+		UAV_OUTPUT_TEX,
 		UAV_DEBUG_VAR,
 		UAV_COUNT
 	};
@@ -58,10 +61,19 @@ private:
 	static const UINT numFrames = 2;
 	static const UINT numSRVHeaps = 3;
 	static const UINT numUAVHeaps = UAV_COUNT;
-	static const UINT numCBVHeaps = 1;
+	static const UINT numCBVHeaps = 2;
 
 	// buffers
-	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer, debugBuffer, bufferCB[1];
+	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer,
+		debugBuffer, bufferCB[numCBVHeaps],
+		plainVCB;
+
+	D3D12_VERTEX_BUFFER_VIEW plainVB;
+
+	XMFLOAT3 plainVerts[6] = {
+		XMFLOAT3(1, 1, 0), XMFLOAT3(1, -1, 0), XMFLOAT3(-1, 1, 0),
+		XMFLOAT3(-1, -1, 0), XMFLOAT3(-1, 1, 0), XMFLOAT3(1, -1, 0)
+	};
 
 	// fences
 	UINT frameIndex;
@@ -122,15 +134,27 @@ private:
 	{
 		UINT restart;
 	};
+	/*
+	struct WORLD_POS
+	{
+		XMMATRIX worldViewProjection;
+		XMMATRIX world;
+	};*/
 
-	struct CONSTANT_BUFFER
+	struct RAY_TRACE_BUFFER
 	{
 		UINT numGrps, numObjects;
-		XMFLOAT3 sceneBBMax, sceneBBMin;
+		UINT screenWidth, screenHeight;
+		XMFLOAT3 sceneBBMin;
+		UINT numIndices;
+		XMFLOAT3 sceneBBMax;
+		XMMATRIX worldViewProjection;
+		XMMATRIX world;
 	};
 
-	// buffer map
-	CONSTANT_BUFFER* bufferData;
+	// constant buffers
+	//WORLD_POS* worldPosCB;
+	RAY_TRACE_BUFFER* rayTraceCB;
 
 	RESTART_BUFFER* bufferRestartData;
 

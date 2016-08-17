@@ -4,7 +4,7 @@
 #define NUM_THREADS 128
 #define DATA_SIZE (NUM_THREADS << 1)
 
-#define DEBUG
+//#define DEBUG
 
 // shapes
 
@@ -15,7 +15,7 @@ struct Box
 
 struct Ray
 {
-	float3 position;
+	float3 origin;
 	float3 direction;
 
 	float3 invDirection;
@@ -44,11 +44,38 @@ struct VERTEX
 	float2 texcoord;
 };
 
+struct Triangle
+{
+	VERTEX verts[3];
+};
+
+struct ColTri
+{
+	bool collision;
+	float distance;
+	Triangle tri;
+};
+/*
+cbuffer WORLD_POS : register(b0)
+{
+	matrix worldViewProjection : packoffset(c0);
+	matrix world : packoffset(c4);
+};*/
+
 cbuffer RAY_TRACE_BUFFER : register(b0)
 {
+	// pack 1
 	uint numGrps, numObjects;
-	float3 sceneBBMin, sceneBBMax;
-	matrix worldviewprojection;
+	uint screenWidth, screenHeight;
+
+	// pack 2
+	float3 sceneBBMin;
+	uint numIndices;
+	
+	// pack 3
+	float3 sceneBBMax;
+
+	matrix worldViewProjection;
 	matrix world;
 };
 
@@ -60,13 +87,26 @@ RWStructuredBuffer<NODE> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);
 RWStructuredBuffer<uint> numOnesBuffer : register(u2);
 RWStructuredBuffer<uint> radixiBuffer : register(u3);
-RWStructuredBuffer<uint> debugVar : register(u4);
+RWStructuredBuffer<float4> outputTex : register(u4);
+RWStructuredBuffer<uint> debugVar : register(u5);
 
 //groupshared uint phase;
 groupshared uint radixi;
 
 groupshared uint positionNotPresent[DATA_SIZE];
 groupshared uint netOnes, numPrecOnes;
+
+float3 minUnion(float3 data1, float3 data2)
+{
+	return float3(min(data1.x, data2.x),
+		min(data1.y, data2.y), min(data1.z, data2.z));
+}
+
+float3 maxUnion(float3 data1, float3 data2)
+{
+	return float3(max(data1.x, data2.x),
+		max(data1.y, data2.y), max(data1.z, data2.z));
+}
 
 void getRadixi(uint groupThreadID, uint3 groupID)
 {

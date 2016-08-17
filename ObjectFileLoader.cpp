@@ -505,7 +505,7 @@ HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device)
 	index_buffer.BufferLocation = mesh_indices->GetGPUVirtualAddress();
 	index_buffer.Format = getIndexFormat();
 	index_buffer.SizeInBytes = sizeof(unsigned int) * getNumIndices();
-	
+/*	
 	float maxV = 0;
 
 	for (int i = 0; i < getNumVertices(); i++)
@@ -518,7 +518,7 @@ HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device)
 	printf("%f\n", maxV);
 	printf("%i\n", vx_array_i[3]);
 
-	printf("%f", vertex_final_array[2444].position.z);
+	printf("%f", vertex_final_array[2444].position.z);*/
 	
 	return S_OK;
 }

@@ -19,10 +19,10 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	while (value)
 	{
 		// compute the union of the bounding boxes
-		BVHTree[nodeID].bbox.bbMin = min(BVHTree[BVHTree[nodeID].childL].bbox.bbMin,
+		BVHTree[nodeID].bbox.bbMin = minUnion(BVHTree[BVHTree[nodeID].childL].bbox.bbMin,
 			BVHTree[BVHTree[nodeID].childR].bbox.bbMin);
 
-		BVHTree[nodeID].bbox.bbMax = max(BVHTree[BVHTree[nodeID].childL].bbox.bbMax,
+		BVHTree[nodeID].bbox.bbMax = maxUnion(BVHTree[BVHTree[nodeID].childL].bbox.bbMax,
 			BVHTree[BVHTree[nodeID].childR].bbox.bbMax);
 		
 		// get the parent

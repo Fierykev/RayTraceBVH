@@ -1,6 +1,5 @@
 #ifndef OBJECT_FILE_LOADER_H
 #define OBJECT_FILE_LOADER_H
-#pragma once
 
 #include <d3d12.h>
 #include "d3dx12.h"

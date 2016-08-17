@@ -1,16 +1,22 @@
 #include <RayTraceGlobal.hlsl>
 
+struct LeadingPrefixRet
+{
+	int num;
+	uint index;
+};
+
 /*
 BVH Construction is based on:
 http://devblogs.nvidia.com/parallelforall/wp-content/uploads/2012/11/karras2012hpg_paper.pdf
 */
 
 /*
- Since BVH construction only multiplies by +/- 1 (direction), this macro computes the result
- of the multiplication using bitwise operations rather than multiplication.
- Please note that it is assumed that multiplication takes longer than the below
- operations.
- */
+Since BVH construction only multiplies by +/- 1 (direction), this macro computes the result
+of the multiplication using bitwise operations rather than multiplication.
+Please note that it is assumed that multiplication takes longer than the below
+operations.
+*/
 
 #define MULTIPLY_BY_POSNEG(x, s) ((x & ~(s & (s >> 1))) | ((~x + 1) & (s & (s >> 1))))
 
@@ -34,7 +40,7 @@ as ones pushed to the right.  Does not give meaningful
 number but the relative output is correct.
 */
 
-int leadingPrefix(uint d1, uint d2, uint index1, uint index2)
+LeadingPrefixRet leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 {
 	// use the index as a tie breaker if they are the same
 	uint data = d1 == d2 ? index1 ^ index2 : d1 ^ d2;
@@ -48,16 +54,37 @@ int leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 	data |= data >> 16;
 	data++;
 
-	return data ? deBruijinLookup[data * 0x076be629 >> 27] : 32;
+	LeadingPrefixRet lpr;
+
+	lpr.num = data ? deBruijinLookup[data * 0x076be629 >> 27] : 32;
+	lpr.index = index2;
+
+	return lpr;
 }
 
 /*
 Same as leadingPrefix but does bounds checks.
 */
 
-int leadingPrefixBounds(uint d1, uint d1Index, int index)
+LeadingPrefixRet leadingPrefixBounds(uint d1, uint d1Index, int index)
 {
-	return (0 <= index && index < (int)numObjects) ? leadingPrefix(d1, BVHTree[index].code, d1Index, index) : -1;
+	LeadingPrefixRet lprERR;
+	lprERR.num = -1;
+	lprERR.index = 0;
+
+	if (0 <= index && index < (int)numObjects)
+		return leadingPrefix(d1, BVHTree[index].code, d1Index, index);
+	else
+		return lprERR;
+}
+
+/*
+Check if a < b.
+*/
+
+bool lessThanPrefix(LeadingPrefixRet a, LeadingPrefixRet b)
+{
+	return (a.num < b.num) || (a.index == b.index && a.index < b.index);
 }
 
 /*
@@ -69,18 +96,18 @@ int2 getChildren(int index)
 	uint codeCurrent = BVHTree[index].code;
 
 	// get range direction
-	int direction = sign(leadingPrefixBounds(codeCurrent, index, index + 1)
-		- leadingPrefixBounds(codeCurrent, index, index - 1));
+	int direction = sign(leadingPrefixBounds(codeCurrent, index, index + 1).num
+		- leadingPrefixBounds(codeCurrent, index, index - 1).num);
 
 	// get upper bound of length range
-	int minLeadingZero = leadingPrefixBounds(codeCurrent, index, index - direction);
+	LeadingPrefixRet minLeadingZero = leadingPrefixBounds(codeCurrent, index, index - direction);
 	uint boundLen = 2;
 
 	// TODO: change back to multiply by 4
 
 	for (;
-	minLeadingZero < leadingPrefixBounds(
-		codeCurrent, index, index + MULTIPLY_BY_POSNEG(boundLen, direction));
+	lessThanPrefix(minLeadingZero, leadingPrefixBounds(
+		codeCurrent, index, index + MULTIPLY_BY_POSNEG(boundLen, direction)));
 	boundLen <<= 1) {
 	}
 
@@ -93,16 +120,16 @@ int2 getChildren(int index)
 	{
 		delta = (delta + 1) >> 1;
 
-		if (minLeadingZero <
+		if (lessThanPrefix(minLeadingZero,
 			leadingPrefixBounds(
-				codeCurrent, index, index + MULTIPLY_BY_POSNEG((deltaSum + delta), direction)))
+				codeCurrent, index, index + MULTIPLY_BY_POSNEG((deltaSum + delta), direction))))
 			deltaSum += delta;
 	} while (1 < delta);
 
 	int boundStart = index + MULTIPLY_BY_POSNEG(deltaSum, direction);
 
 	// find slice range
-	int leadingZero = leadingPrefixBounds(codeCurrent, index, boundStart);
+	LeadingPrefixRet leadingZero = leadingPrefixBounds(codeCurrent, index, boundStart);
 
 	delta = deltaSum;
 	int tmp = 0;
@@ -111,8 +138,8 @@ int2 getChildren(int index)
 	{
 		delta = (delta + 1) >> 1;
 
-		if (leadingZero <
-			leadingPrefixBounds(codeCurrent, index, index + MULTIPLY_BY_POSNEG((tmp + delta), direction)))
+		if (lessThanPrefix(leadingZero,
+			leadingPrefixBounds(codeCurrent, index, index + MULTIPLY_BY_POSNEG((tmp + delta), direction))))
 			tmp += delta;
 	} while (1 < delta);
 
