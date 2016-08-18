@@ -183,12 +183,12 @@ void ObjLoader::Material_File(string filename, string matfile, unsigned long* te
 				material.at(*tex_num).texture_path = directory + ptr; // the material file
 																	  // load the file
 																	  // convert to a LPWSTR
-
+				
 				wstring filename;
 				filename.assign(material.at(*tex_num).texture_path.begin(), material.at(*tex_num).texture_path.end());
 				
 				// load in the texture
-				if (material.at(*tex_num).image.loadImage(filename.c_str())) // create the texture
+				if (!material.at(*tex_num).image.loadImage(Device, filename.c_str())) // create the texture
 				{
 					cout << "Error (OBJECT LOADER): Cannot Load Image File- " << material.at(*tex_num).texture_path.c_str() << endl;
 				}
@@ -427,10 +427,8 @@ void ObjLoader::Load_Geometry(char *filename, ID3D12Device* Device)
 	}
 }
 
-HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device)
+void ObjLoader::Load(char *filename, ID3D12Device* Device)
 {
-	HRESULT hr;
-
 	Load_Geometry(filename, Device);
 
 	// Now let's place the object mesh into the buffers structure
@@ -438,25 +436,30 @@ HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device)
 	// Setup vertex buffer
 
 	ThrowIfFailed(Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(Vertex) * getNumVertices()),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&mesh_verts)));
+
+	ThrowIfFailed(Device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(Vertex) * getNumVertices()),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&mesh_verts)));
-
-	UINT8* pVertexDataBegin;
-	CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
-	ThrowIfFailed(mesh_verts->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-	memcpy(pVertexDataBegin, (void*)vertex_final_array, sizeof(Vertex) * getNumVertices());
-	mesh_verts->Unmap(0, nullptr);
-
-	// Initialize the vertex buffer view.
-	vertex_buffer.BufferLocation = mesh_verts->GetGPUVirtualAddress();
-	vertex_buffer.StrideInBytes = sizeof(Vertex);
-	vertex_buffer.SizeInBytes = sizeof(Vertex) * getNumVertices();
+		IID_PPV_ARGS(&mesh_verts_upload)));
 	
 	// Setup index buffer
+
+	ThrowIfFailed(Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * getNumIndices()),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&mesh_indices)));
 
 	ThrowIfFailed(Device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -464,23 +467,13 @@ HRESULT ObjLoader::Load(char *filename, ID3D12Device* Device)
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * getNumIndices()),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&mesh_indices)));
-
-	UINT8* pIndexDataBegin;
-	ThrowIfFailed(mesh_indices->Map(0, &readRange, reinterpret_cast<void**>(&pIndexDataBegin)));
-	memcpy(pIndexDataBegin, (void*)&vx_array_i.at(0), sizeof(unsigned int) * getNumIndices());
-	mesh_indices->Unmap(0, nullptr);
-
-	// Initialize the index buffer view.
-	index_buffer.BufferLocation = mesh_indices->GetGPUVirtualAddress();
-	index_buffer.Format = getIndexFormat();
-	index_buffer.SizeInBytes = sizeof(unsigned int) * getNumIndices();
-	
-	return S_OK;
+		IID_PPV_ARGS(&mesh_indices_upload)));
 }
 
-void ObjLoader::UploadTexture(ID3D12GraphicsCommandList* commandList)
+void ObjLoader::UploadData(ID3D12GraphicsCommandList* commandList)
 {
+	// setup textures
+
 	for (size_t i = 0; i < material.size(); i++)
 	{
 		Material *pMaterial = &material.at(i);
@@ -490,4 +483,36 @@ void ObjLoader::UploadTexture(ID3D12GraphicsCommandList* commandList)
 			pMaterial->image.uploadTexture(commandList);
 		}
 	}
+
+	// setup verts
+
+	D3D12_SUBRESOURCE_DATA vertData = {};
+	vertData.pData = reinterpret_cast<UINT8*>(vertex_final_array);
+	vertData.RowPitch = sizeof(Vertex) * getNumVertices();
+	vertData.SlicePitch = vertData.RowPitch;
+
+	// send over the data
+	UpdateSubresources<1>(commandList,
+		mesh_verts.Get(), mesh_verts_upload.Get(), 0, 0, 1, &vertData);
+
+	// resource barrier for data
+	commandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(mesh_verts.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+
+	D3D12_SUBRESOURCE_DATA indexData = {};
+	indexData.pData = &vx_array_i.at(0);
+	indexData.RowPitch = sizeof(unsigned int) * getNumVertices();
+	indexData.SlicePitch = indexData.RowPitch;
+
+	// send over the data
+	UpdateSubresources<1>(commandList,
+		mesh_indices.Get(), mesh_indices_upload.Get(), 0, 0, 1, &indexData);
+
+	// resource barrier for data
+	commandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(mesh_indices.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
 }

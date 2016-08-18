@@ -43,7 +43,7 @@ number but the relative output is correct.
 LeadingPrefixRet leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 {
 	// use the index as a tie breaker if they are the same
-	uint data = d1 == d2 ? index1 ^ index2 : d1 ^ d2;
+	uint data = index1 ^ index2;
 
 	// remove non-leading zeros
 

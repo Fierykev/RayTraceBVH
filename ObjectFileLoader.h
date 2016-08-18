@@ -97,10 +97,10 @@ public:
 
 	~ObjLoader(); // destruction method
 
-	HRESULT Load(char *filename, ID3D12Device* Device); // Load the object with its materials
+	void Load(char *filename, ID3D12Device* Device); // Load the object with its materials
 																   // get the number of materials used
 
-	void UploadTexture(ID3D12GraphicsCommandList* commandList);
+	void UploadData(ID3D12GraphicsCommandList* commandList);
 
 	const size_t ObjLoader::getMat_Num()
 	{
@@ -136,13 +136,6 @@ public:
 		return vertex_final_array;
 	}
 
-	// get a pointer to the vertex buffer
-
-	D3D12_VERTEX_BUFFER_VIEW* ObjLoader::getVertexBuffer()
-	{
-		return &vertex_buffer;
-	}
-
 	// get the vertex stride
 
 	UINT ObjLoader::getVertexStride()
@@ -155,13 +148,6 @@ public:
 	const unsigned int* ObjLoader::getIndices()
 	{
 		return &vx_array_i.at(0);
-	}
-
-	// get a pointer to the index buffer
-
-	D3D12_INDEX_BUFFER_VIEW* ObjLoader::getIndexBuffer()
-	{
-		return &index_buffer;
 	}
 
 	// get a pointer to the mapped index data
@@ -212,11 +198,11 @@ private:
 
 	// Create a vector to store the verticies
 
-	void ObjLoader::Load_Geometry(char *filename, ID3D12Device* Device); // load the verticies and indices
+	void Load_Geometry(char *filename, ID3D12Device* Device); // load the verticies and indices
 
-	void ObjLoader::Material_File(string filename, string matfile, unsigned long* tex_num, ID3D12Device* Device); // load the material file
+	void Material_File(string filename, string matfile, unsigned long* tex_num, ID3D12Device* Device); // load the material file
 
-	void ObjLoader::Base_Mat(Material *mat); // the basic material
+	void Base_Mat(Material *mat); // the basic material
 
 	vector <unsigned int> vx_array_i; // store the indecies for the vertex
 
@@ -234,13 +220,9 @@ private:
 
 	// Mesh management
 
-	ComPtr<ID3D12Resource> mesh_verts; // our mesh	
+	ComPtr<ID3D12Resource> mesh_verts, mesh_verts_upload; // our mesh	
 
-	ComPtr<ID3D12Resource> mesh_indices; // our indices
-
-	D3D12_VERTEX_BUFFER_VIEW vertex_buffer;
-	
-	D3D12_INDEX_BUFFER_VIEW index_buffer;
+	ComPtr<ID3D12Resource> mesh_indices, mesh_indices_upload; // our indices
 
 	unsigned int mesh_num; // the number of meshes
 };

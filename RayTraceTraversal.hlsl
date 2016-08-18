@@ -1,5 +1,5 @@
 #include <RayTraceGlobal.hlsl>
-#include <RayTraceRender.hlsl>
+//#include <RayTraceRender.hlsl>
 
 #define EPSILON .00001
 
@@ -9,9 +9,9 @@
 Update the vert and pass back a new vert.
 */
 
-VERTEX getUpdateVerts(uint index)
+Vertex getUpdateVerts(uint index)
 {
-	VERTEX updateVert;
+	Vertex updateVert;
 	updateVert.position = mul(float4(verts[index].position, 1),
 		worldViewProjection);
 	updateVert.normal = mul(float4(verts[index].normal, 1),

@@ -1,5 +1,11 @@
 #include <RayTraceGlobal.hlsl>
 
+uint rand(uint lfsr)
+{
+	//uint bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
+	return ((uint)(lfsr / 65536) % 32768); //lfsr = (lfsr >> 1) | (bit << 15);
+}
+
 float3 getPosTrans(uint index)
 {
 	return (float3)mul(float4(verts[index].position, 1),
@@ -50,14 +56,6 @@ uint calcMortonCode(float3 p)
 	// combine codes for the output
 	return code[2] | code[1] << 1 | code[0] << 2;
 }
-// TODO: OBV
-//#ifdef DEBUG
-uint rand(uint lfsr)
-{
-	//uint bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
-	return ((uint)(lfsr / 65536) % 32768);// lfsr = (lfsr >> 1) | (bit << 15);
-}
-//#endif
 
 [numthreads(NUM_THREADS, 1, 1)]
 void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
@@ -71,7 +69,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 
 	float3 vertData;
 
-	uint index, indicesBase;
+	uint index, indicesBase, mortonCode;
 
 	// note unroll causes error
 	//[loop]
@@ -81,13 +79,10 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		bbMax = float3(0, 0, 0);
 		avg = float3(0, 0, 0);
 
-		index = (threadID.x << 1) + loadi;
+		index = (threadID.x * 2) + loadi;
 
 		indicesBase = threadID.x * 3 * 2 + loadi * 3;
-
-		// set code to zero
-		BVHTree[index].code = 0;
-
+		
 		// check if data is in bounds
 		if (indicesBase < numIndices)
 		{
@@ -106,50 +101,31 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 				bbMin = minUnion(bbMin, vertData);
 				bbMax = maxUnion(bbMax, vertData);
 
-				avg += vertData;
+				avg = minUnion(bbMin, vertData);
 			}
 
 			// divide by three to compute the average
 			avg /= 3.f;
 
-#ifndef DEBUG
-			BVHTree[index].code = calcMortonCode((avg - sceneBBMin) /
+			mortonCode = calcMortonCode((avg - sceneBBMin) /
 				(sceneBBMax - sceneBBMin));
-#endif
 		}
-
+		
 		// place the centroid point in the unit cube and calculate / store the morton code
 		// store globally as well
-#ifdef DEBUG
 
-		float pointData = (float)(groupID.x + 1) * (groupThreadID.x * 2 + loadi + 1);
+		// store the code
+		BVHTree[index].code = mortonCode;
 
-		float3 tmpPoint = float3(
-			rand(pointData) / rand(rand(pointData)),
-			rand(rand(pointData)) / rand(pointData),
-			rand(rand(rand(pointData))) / rand(pointData)
-			);
-
-		BVHTree[index].code = calcMortonCode(tmpPoint);
-
-		// store bounding box info
-		BVHTree[index].bbox.bbMin = tmpPoint;
-		BVHTree[index].bbox.bbMax = float3(tmpPoint.y, tmpPoint.z, tmpPoint.x);
-#else
 		// store bounding box info
 		BVHTree[index].bbox.bbMin = bbMin;
 		BVHTree[index].bbox.bbMax = bbMax;
-#endif
-		//BVHTree[index].code = debugData[index].code;
+
 		// set children to invalid
 		BVHTree[index].childL = -1;
 		BVHTree[index].childR = -1;
 		
 		// store vert index data
 		BVHTree[index].index = indicesBase;
-		BVHTree[index].code = debugData[index].code;
-
-		//BVHTree[index].index = debugData[index].index;
-		//BVHTree[index].bbox = debugData[index].bbox;
 	}
 }

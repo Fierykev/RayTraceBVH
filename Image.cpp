@@ -1,6 +1,17 @@
 #include "d3dx12.h"
 #include "Image.h"
 
+bool devILInit = false;
+
+Image::Image()
+{
+	if (!devILInit)
+		ilInit();
+
+	// init devIL
+	devILInit = true;
+}
+
 Image::~Image()
 {
 	// unbind and delete
@@ -9,7 +20,7 @@ Image::~Image()
 	ilDeleteImage(imageID);
 }
 
-bool Image::loadImage(const wchar_t* filename)
+bool Image::loadImage(ID3D12Device* device, const wchar_t* filename)
 {
 	ILuint ImgId = 0;
 
@@ -21,19 +32,15 @@ bool Image::loadImage(const wchar_t* filename)
 	format = ilGetInteger(IL_IMAGE_FORMAT);
 
 	// get the image data and unbind
-	ilBindImage(imageID);
 	data = ilGetData();
-	ilBindImage(0);
+
+	// create the d3d texture
+	createTexture(device);
 
 	return true;
 }
 
-ILubyte* Image::getData()
-{
-	return data;
-}
-
-void Image::createTexture(ComPtr<ID3D12Device> device)
+void Image::createTexture(ID3D12Device* device)
 {
 	subData.pData = data;
 
@@ -41,6 +48,13 @@ void Image::createTexture(ComPtr<ID3D12Device> device)
 	
 	switch (format)
 	{
+	case IL_COLOR_INDEX:
+		// TODO: FIX
+		dxFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		subData.RowPitch = width * 3;
+		subData.SlicePitch = width * height * 3;
+
+		break;
 	case IL_RGB:
 
 		dxFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
@@ -88,9 +102,14 @@ void Image::createTexture(ComPtr<ID3D12Device> device)
 void Image::uploadTexture(ID3D12GraphicsCommandList* commandList)
 {
 	// upload the texture
-	UpdateSubresources(commandList, texture2D.Get(), uploadText.Get(), 0, 0, 1, &subData);
+	//UpdateSubresources(commandList, texture2D.Get(), uploadText.Get(), 0, 0, 1, &subData);
 
 	// set the barrier
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture2D.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+	//commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture2D.Get(),
+		//D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+}
+
+ILubyte* Image::getData()
+{
+	return data;
 }

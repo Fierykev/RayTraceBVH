@@ -4,8 +4,6 @@
 #define NUM_THREADS 128
 #define DATA_SIZE (NUM_THREADS << 1)
 
-//#define DEBUG
-
 // shapes
 
 struct Box
@@ -23,7 +21,7 @@ struct Ray
 
 // buffer structs
 
-struct NODE
+struct Node
 {
 	int parent;
 	int childL, childR;
@@ -37,14 +35,14 @@ struct NODE
 	uint index;
 };
 
-struct VERTEX
+struct Vertex
 {
 	float3 position;
 	float3 normal;
 	float2 texcoord;
 };
 
-struct MATERIAL
+struct Material
 {
 	float4 ambient;
 	float4 diffuse;
@@ -57,7 +55,7 @@ struct MATERIAL
 
 struct Triangle
 {
-	VERTEX verts[3];
+	Vertex verts[3];
 };
 
 struct ColTri
@@ -87,19 +85,17 @@ cbuffer RAY_TRACE_BUFFER : register(b1)
 	float3 sceneBBMax;
 };
 
-StructuredBuffer<VERTEX> verts : register(t0);
+StructuredBuffer<Vertex> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
-StructuredBuffer<MATERIAL> mat : register(t2);
-StructuredBuffer<NODE> debugData : register(t3);
+//StructuredBuffer<Material> mat : register(t2);
+//Texture2D images[] : register(t3);
 
-RWStructuredBuffer<NODE> BVHTree : register(u0);
+RWStructuredBuffer<Node> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);
 RWStructuredBuffer<uint> numOnesBuffer : register(u2);
 RWStructuredBuffer<uint> radixiBuffer : register(u3);
 RWStructuredBuffer<float4> outputTex : register(u4);
-RWStructuredBuffer<uint> debugVar : register(u5);
 
-//groupshared uint phase;
 groupshared uint radixi;
 
 groupshared uint positionNotPresent[DATA_SIZE];

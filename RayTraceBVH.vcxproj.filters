@@ -118,12 +118,6 @@
     <FxCompile Include="RadixSortP2.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
-    <FxCompile Include="RadixSortTest.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
-    </FxCompile>
-    <FxCompile Include="BVHConstructTest.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
-    </FxCompile>
     <FxCompile Include="BVHConstructP2.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\BVH Construction</Filter>
     </FxCompile>

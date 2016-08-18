@@ -38,10 +38,8 @@ private:
 		CS_MORTON_CODES = 0,
 		CS_RADIX_SORT_P1,
 		CS_RADIX_SORT_P2,
-		CS_RADIX_SORT_TEST,
 		CS_BVH_CONSTRUCTION_P1,
 		CS_BVH_CONSTRUCTION_P2,
-		CS_BVH_CONSTRUCTION_TEST,
 		CS_RAY_TRACE_TRAVERSAL,
 		CS_COUNT
 	};
@@ -49,25 +47,23 @@ private:
 	// setup the 
 	enum BVHUAV : UINT32
 	{
-		UAV_VERTS = 0,
-		UAV_BVHTREE,
+		UAV_BVHTREE = 0,
 		UAV_TRANSFER_BUFFER,
 		UAV_NUM_ONES_BUFFER,
 		UAV_RADIXI_BUFFER,
 		UAV_OUTPUT_TEX,
-		UAV_DEBUG_VAR,
 		UAV_COUNT
 	};
 
 	// static globals
 	static const UINT numFrames = 2;
-	static const UINT numSRVHeaps = 3;
+	static const UINT numSRVHeaps = 2;
 	static const UINT numUAVHeaps = UAV_COUNT;
 	static const UINT numCBVHeaps = 2;
 
 	// buffers
 	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer,
-		debugBuffer, bufferCB[numCBVHeaps],
+		bufferCB[numCBVHeaps],
 		plainVCB;
 
 	D3D12_VERTEX_BUFFER_VIEW plainVB;
@@ -171,8 +167,7 @@ private:
 	// locations in the root parameter table
 	enum RootParameters : UINT32
 	{
-		rpCB0 = 0,
-		rpCB1,
+		rpCB = 0,
 		rpSRV,
 		rpUAV,
 		rpCount
