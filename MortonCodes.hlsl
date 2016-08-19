@@ -1,11 +1,5 @@
 #include <RayTraceGlobal.hlsl>
 
-uint rand(uint lfsr)
-{
-	//uint bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
-	return ((uint)(lfsr / 65536) % 32768); //lfsr = (lfsr >> 1) | (bit << 15);
-}
-
 float3 getPosTrans(uint index)
 {
 	return (float3)mul(float4(verts[index].position, 1),
@@ -41,7 +35,7 @@ uint calcMortonCode(float3 p)
 	uint3 code;
 
 	// multiply out
-	//[unroll(3)]
+	[unroll(3)]
 	for (int i = 0; i < 3; i++)
 	{
 		// change to base .5
@@ -93,7 +87,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 			bbMin = bbMax = avg = vertData;
 
 			// load in the data (3 indices and 3 verts)
-			//[unroll(3)]
+			[unroll(2)]
 			for (uint sumi = 1; sumi < 3; sumi++)
 			{
 				vertData = getPosTrans(indices[indicesBase + sumi]);

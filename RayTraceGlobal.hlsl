@@ -87,8 +87,8 @@ cbuffer RAY_TRACE_BUFFER : register(b1)
 
 StructuredBuffer<Vertex> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
-//StructuredBuffer<Material> mat : register(t2);
-//Texture2D images[] : register(t3);
+StructuredBuffer<Material> mat : register(t2);
+Texture2D diffuseTex[] : register(t3);
 
 RWStructuredBuffer<Node> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);
@@ -100,6 +100,11 @@ groupshared uint radixi;
 
 groupshared uint positionNotPresent[DATA_SIZE];
 groupshared uint netOnes, numPrecOnes;
+
+uint rand(uint lfsr)
+{
+	return ((uint)(lfsr / 65536) % 32768);
+}
 
 float3 minUnion(float3 data1, float3 data2)
 {

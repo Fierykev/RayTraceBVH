@@ -192,8 +192,6 @@ public:
 		return D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 
-	void ObjLoader::freeOnStack();
-
 private:
 
 	// Create a vector to store the verticies
@@ -208,7 +206,7 @@ private:
 
 	vector <float> vx_array; // store the verticies in the mesh
 
-	Vertex* vertex_final_array; // the final verticies organized for Direct3D to draw
+	Vertex* vertex_final_array = nullptr; // the final verticies organized for Direct3D to draw
 
 	vector <Material> material; // the materials used on the object
 

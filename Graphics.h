@@ -9,6 +9,8 @@
 
 using namespace Microsoft::WRL;
 
+#define MAX_TEXTURES 10
+
 #define CAM_DELTA .1f
 
 class Graphics : public Manager
@@ -44,8 +46,23 @@ private:
 		CS_COUNT
 	};
 
-	// setup the 
-	enum BVHUAV : UINT32
+	// setup the srv and uav enums
+	enum BVCB : UINT32
+	{
+		CB_WORLD,
+		CB_RAY_TRACER,
+		CBV_COUNT
+	};
+
+	enum BVSRV : UINT32
+	{
+		SRV_VERTS = 0,
+		SRV_INDICES,
+		SRV_MAT,
+		SRV_COUNT
+	};
+
+	enum BVUAV : UINT32
 	{
 		UAV_BVHTREE = 0,
 		UAV_TRANSFER_BUFFER,
@@ -57,14 +74,10 @@ private:
 
 	// static globals
 	static const UINT numFrames = 2;
-	static const UINT numSRVHeaps = 2;
-	static const UINT numUAVHeaps = UAV_COUNT;
-	static const UINT numCBVHeaps = 2;
 
 	// buffers
-	ComPtr<ID3D12Resource> bufferCS[numUAVHeaps], zeroBuffer,
-		bufferCB[numCBVHeaps],
-		plainVCB;
+	ComPtr<ID3D12Resource> bufferCB[CBV_COUNT], bufferCS[UAV_COUNT],
+		zeroBuffer, plainVCB;
 
 	D3D12_VERTEX_BUFFER_VIEW plainVB;
 

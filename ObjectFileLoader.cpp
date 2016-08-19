@@ -12,18 +12,15 @@ ObjLoader::ObjLoader()
 	vertex_final_array = nullptr;
 }
 
-void ObjLoader::freeOnStack()
-{
-	if (vertex_final_array != nullptr)
-		free(vertex_final_array);
-}
-
 ObjLoader::~ObjLoader()
 {
 	// delete all data
 
-	freeOnStack();
-	const int ERROR_VALUE = 1;
+	delete vertex_final_array;
+
+	// remove images (different from cleaning up vector)
+	for (size_t i = 0; i < material.size(); i++)
+		material[i].image.deleteImage();
 
 	/*
 	for (unsigned int i = 0; i < material->size(); i++)
@@ -207,7 +204,8 @@ void ObjLoader::Load_Geometry(char *filename, ID3D12Device* Device)
 {
 	// delete past memory
 
-	freeOnStack();
+	if (vertex_final_array != nullptr)
+		delete vertex_final_array;
 
 	// allocate memory to the vectors on the heap
 

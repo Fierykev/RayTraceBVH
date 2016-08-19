@@ -201,7 +201,7 @@ void Graphics::loadPipeline()
 	// CBV / SRV / UAV
 
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-	cbvHeapDesc.NumDescriptors = numSRVHeaps + numUAVHeaps + numCBVHeaps;
+	cbvHeapDesc.NumDescriptors = SRV_COUNT + (MAX_TEXTURES - 1) + UAV_COUNT + CBV_COUNT;
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&csuHeap)));
@@ -231,7 +231,7 @@ void Graphics::loadAssets()
 
 	// setup buffers for shaders
 	const UINT numThreads = 128; // TODO: can decrease number of threads
-	/*const UINT */numGrps = (UINT)ceil(obj.getNumIndices() / (double)DATA_SIZE);
+	/*const UINT */numGrps = (UINT)ceil(obj.getNumIndices() / (double)DATA_SIZE / 3);
 
 	// load the shaders
 	string dataVS, dataPS, dataCS[CS_COUNT];
@@ -284,9 +284,9 @@ void Graphics::loadAssets()
 	CD3DX12_DESCRIPTOR_RANGE ranges[rpCount];
 	CD3DX12_ROOT_PARAMETER rootParameters[rpCount];
 
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, numCBVHeaps, 0);
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, numSRVHeaps, 0);
-	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, numUAVHeaps, 0);
+	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, CBV_COUNT, 0);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, SRV_COUNT, 0);
+	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, UAV_COUNT, 0);
 	rootParameters[rpCB].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 	rootParameters[rpSRV].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
 	rootParameters[rpUAV].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_ALL);
@@ -450,8 +450,8 @@ void Graphics::loadAssets()
 	// TODO: check if below is needed
 	// TODO: UPDATE
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), numCBVHeaps, csuDescriptorSize);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE uavHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), numCBVHeaps + numSRVHeaps, csuDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), CBV_COUNT, csuDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE uavHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_COUNT, csuDescriptorSize);
 
 	// set up zero buffer
 
@@ -628,8 +628,8 @@ void Graphics::computeBVH()
 	csCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
-	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps, csuDescriptorSize);
-	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps + numSRVHeaps, csuDescriptorSize);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT, csuDescriptorSize);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_COUNT, csuDescriptorSize);
 	
 	csCommandList->SetComputeRootDescriptorTable(rpCB, cbvHandle);
 	csCommandList->SetComputeRootDescriptorTable(rpSRV, srvHandle); // input
@@ -768,8 +768,8 @@ void Graphics::populateCommandList()
 	// setup the resources
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
-	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps, csuDescriptorSize);
-	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), numCBVHeaps + numSRVHeaps, csuDescriptorSize);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT, csuDescriptorSize);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_COUNT, csuDescriptorSize);
 
 	commandList->SetGraphicsRootDescriptorTable(rpCB, cbvHandle);
 	commandList->SetGraphicsRootDescriptorTable(rpSRV, srvHandle); // input

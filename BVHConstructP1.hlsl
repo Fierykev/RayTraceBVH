@@ -103,8 +103,7 @@ int2 getChildren(int index)
 	LeadingPrefixRet minLeadingZero = leadingPrefixBounds(codeCurrent, index, index - direction);
 	uint boundLen = 2;
 
-	// TODO: change back to multiply by 4
-
+	// TODO: possibly change back to multiply by 4
 	for (;
 	lessThanPrefix(minLeadingZero, leadingPrefixBounds(
 		codeCurrent, index, index + MULTIPLY_BY_POSNEG(boundLen, direction)));

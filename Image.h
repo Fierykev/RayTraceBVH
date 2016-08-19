@@ -17,7 +17,7 @@ public:
 
 	Image();
 
-	~Image();
+	void deleteImage();
 
 	bool loadImage(ID3D12Device* device, const wchar_t* filename);
 
@@ -30,14 +30,11 @@ private:
 	void createTexture(ID3D12Device* device);
 
 	ComPtr<ID3D12Resource> texture2D, uploadText;
-	D3D12_SUBRESOURCE_DATA subData;
 
-	int imageID = -1;
 	int width;
 	int height;
-	int format;
 
-	ILubyte* data;
+	unsigned char* data = nullptr;
 };
 
 #endif
