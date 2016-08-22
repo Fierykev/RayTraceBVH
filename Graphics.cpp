@@ -52,8 +52,8 @@ void Graphics::onUpdate()
 		XMMatrixTranspose(world);
 
 	// run the compute bbh
-
-	computeBVH();
+	// TODO: re-enable
+	//computeBVH();
 
 	// wait for the last present
 	
@@ -201,12 +201,22 @@ void Graphics::loadPipeline()
 	// CBV / SRV / UAV
 
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-	cbvHeapDesc.NumDescriptors = SRV_COUNT + (MAX_TEXTURES - 1) + UAV_COUNT + CBV_COUNT;
+	cbvHeapDesc.NumDescriptors = numSRV;
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&csuHeap)));
 	
 	csuDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	// Sampler
+
+	D3D12_DESCRIPTOR_HEAP_DESC samplerHeapDesc = {};
+	samplerHeapDesc.NumDescriptors = SAMPLER_COUNT;
+	samplerHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+	samplerHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	ThrowIfFailed(device->CreateDescriptorHeap(&samplerHeapDesc, IID_PPV_ARGS(&samplerHeap)));
+
+	samplerDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
 	// frame resource
 
@@ -226,13 +236,6 @@ void Graphics::loadPipeline()
 
 void Graphics::loadAssets()
 {
-	// load the mesh file to be displayed
-	obj.Load("Obj/Test.obj", device.Get());
-
-	// setup buffers for shaders
-	const UINT numThreads = 128; // TODO: can decrease number of threads
-	/*const UINT */numGrps = (UINT)ceil(obj.getNumIndices() / (double)DATA_SIZE / 3);
-
 	// load the shaders
 	string dataVS, dataPS, dataCS[CS_COUNT];
 
@@ -283,19 +286,20 @@ void Graphics::loadAssets()
 
 	CD3DX12_DESCRIPTOR_RANGE ranges[rpCount];
 	CD3DX12_ROOT_PARAMETER rootParameters[rpCount];
-
+	
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, CBV_COUNT, 0);
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, SRV_COUNT, 0);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, numSRV, 0);
 	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, UAV_COUNT, 0);
+	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, SAMPLER_COUNT, 0);
 	rootParameters[rpCB].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 	rootParameters[rpSRV].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
 	rootParameters[rpUAV].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_ALL);
+	rootParameters[rpSAMPLER].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_ALL);
 
 	// empty root signature
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-	// was cof -1
 
 	ComPtr<ID3DBlob> signature;
 	ComPtr<ID3DBlob> error;
@@ -342,6 +346,20 @@ void Graphics::loadAssets()
 
 		ThrowIfFailed(device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&computeStateCS[i])));
 	}
+
+	// load objects and setup object materials
+	CD3DX12_CPU_DESCRIPTOR_HANDLE srvTexHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_TEX, csuDescriptorSize);
+	setSRVBase(srvTexHandle0, csuDescriptorSize);
+
+	// load the mesh file to be displayed
+	obj.Load("Obj/Test.obj", device.Get());
+
+	// setup buffers for shaders
+	const UINT numThreads = 128; // TODO: can decrease number of threads
+	/*const UINT */numGrps = (UINT)ceil(obj.getNumIndices() / (double)DATA_SIZE / 3);
+
+	// setup upload buffer
+	createUploadTexture(device.Get());
 
 	// UAV
 
@@ -452,6 +470,7 @@ void Graphics::loadAssets()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), CBV_COUNT, csuDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE uavHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_COUNT, csuDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE samplerHandle0(samplerHeap->GetCPUDescriptorHandleForHeapStart(), 0, samplerDescriptorSize);
 
 	// set up zero buffer
 
@@ -526,6 +545,8 @@ void Graphics::loadAssets()
 	srvHandle0.Offset(1, csuDescriptorSize);
 	device->CreateShaderResourceView(obj.getIndexMappedBuffer(), &srvDesc, srvHandle0);
 
+	// setup texture data srv
+
 	// setup buffer (uav)
 
 	// BVH tree
@@ -571,6 +592,9 @@ void Graphics::loadAssets()
 	ThrowIfFailed(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[frameIndex].Get(), nullptr, IID_PPV_ARGS(&commandList)));
 
 	// setup commands
+	// send over the sampler data
+	createSampler(device.Get(), samplerHandle0);
+
 	// send over the object data
 
 	obj.UploadData(commandList.Get());
@@ -624,16 +648,18 @@ void Graphics::computeBVH()
 	
 	csCommandList->SetComputeRootSignature(computeRootSignature.Get());
 
-	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get() };
+	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get(), samplerHeap.Get() };
 	csCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_COUNT, csuDescriptorSize);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE samplerHandle(samplerHeap->GetGPUDescriptorHandleForHeapStart(), 0, samplerDescriptorSize);
 	
 	csCommandList->SetComputeRootDescriptorTable(rpCB, cbvHandle);
-	csCommandList->SetComputeRootDescriptorTable(rpSRV, srvHandle); // input
-	csCommandList->SetComputeRootDescriptorTable(rpUAV, uavHandle); // output
+	csCommandList->SetComputeRootDescriptorTable(rpSRV, srvHandle);
+	csCommandList->SetComputeRootDescriptorTable(rpUAV, uavHandle);
+	csCommandList->SetComputeRootDescriptorTable(rpSAMPLER, samplerHandle);
 
 	// setup the command list
 
@@ -762,7 +788,7 @@ void Graphics::populateCommandList()
 
 	commandList->SetGraphicsRootSignature(rootSignature.Get());
 
-	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get() };
+	ID3D12DescriptorHeap* ppHeaps[] = { csuHeap.Get(), samplerHeap.Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	// setup the resources
@@ -770,10 +796,13 @@ void Graphics::populateCommandList()
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), 0, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT, csuDescriptorSize);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uavHandle(csuHeap->GetGPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_COUNT, csuDescriptorSize);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE samplerHandle(samplerHeap->GetGPUDescriptorHandleForHeapStart(), 0, samplerDescriptorSize);
 
 	commandList->SetGraphicsRootDescriptorTable(rpCB, cbvHandle);
-	commandList->SetGraphicsRootDescriptorTable(rpSRV, srvHandle); // input
-	commandList->SetGraphicsRootDescriptorTable(rpUAV, uavHandle); // output
+	commandList->SetGraphicsRootDescriptorTable(rpSRV, srvHandle);
+	commandList->SetGraphicsRootDescriptorTable(rpUAV, uavHandle);
+	commandList->SetGraphicsRootDescriptorTable(rpSAMPLER, samplerHandle);
+
 
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissorRect);

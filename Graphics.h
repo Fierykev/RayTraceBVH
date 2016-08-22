@@ -59,6 +59,7 @@ private:
 		SRV_VERTS = 0,
 		SRV_INDICES,
 		SRV_MAT,
+		SRV_TEX,
 		SRV_COUNT
 	};
 
@@ -72,8 +73,15 @@ private:
 		UAV_COUNT
 	};
 
+	enum BVSAMPLER :UINT32
+	{
+		LINEAR_SAMPLER = 0,
+		SAMPLER_COUNT
+	};
+
 	// static globals
 	static const UINT numFrames = 2;
+	static const UINT numSRV = SRV_COUNT + (MAX_TEXTURES - 1) + UAV_COUNT + CBV_COUNT;
 
 	// buffers
 	ComPtr<ID3D12Resource> bufferCB[CBV_COUNT], bufferCS[UAV_COUNT],
@@ -111,8 +119,10 @@ private:
 	// heaps
 	ComPtr<ID3D12DescriptorHeap> rtvHeap;
 	ComPtr<ID3D12DescriptorHeap> csuHeap;
+	ComPtr<ID3D12DescriptorHeap> samplerHeap;
 	UINT rtvDescriptorSize;
 	UINT csuDescriptorSize;
+	UINT samplerDescriptorSize;
 
 	// synchronized objects
 	ComPtr<ID3D12Fence> fence;
@@ -183,6 +193,7 @@ private:
 		rpCB = 0,
 		rpSRV,
 		rpUAV,
+		rpSAMPLER,
 		rpCount
 	};
 };

@@ -5,6 +5,8 @@
 
 #define STACK_SIZE 2<<5
 
+// NOTE: fix performance hit from thread num
+
 /*
 Update the vert and pass back a new vert.
 */

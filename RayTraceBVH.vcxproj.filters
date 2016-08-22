@@ -147,5 +147,8 @@
     <None Include="RayTraceRender.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
     </None>
+    <None Include="RayTraceHelper.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
+    </None>
   </ItemGroup>
 </Project>

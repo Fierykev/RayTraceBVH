@@ -4,6 +4,8 @@
 #define NUM_THREADS 128
 #define DATA_SIZE (NUM_THREADS << 1)
 
+#define MAX_TEXTURES 10
+
 // shapes
 
 struct Box
@@ -51,6 +53,8 @@ struct Material
 	int shininess;
 	float alpha;
 	bool specularb;
+
+	int texNum;
 };
 
 struct Triangle
@@ -88,13 +92,15 @@ cbuffer RAY_TRACE_BUFFER : register(b1)
 StructuredBuffer<Vertex> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
 StructuredBuffer<Material> mat : register(t2);
-Texture2D diffuseTex[] : register(t3);
+Texture2D diffuseTex[MAX_TEXTURES] : register(t3);
 
 RWStructuredBuffer<Node> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);
 RWStructuredBuffer<uint> numOnesBuffer : register(u2);
 RWStructuredBuffer<uint> radixiBuffer : register(u3);
 RWStructuredBuffer<float4> outputTex : register(u4);
+
+SamplerState compSample : register(s0);
 
 groupshared uint radixi;
 
