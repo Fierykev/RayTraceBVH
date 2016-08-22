@@ -58,6 +58,7 @@ private:
 	{
 		SRV_VERTS = 0,
 		SRV_INDICES,
+		SRV_MAT_INDEX,
 		SRV_MAT,
 		SRV_TEX,
 		SRV_COUNT

@@ -52,8 +52,7 @@ void Graphics::onUpdate()
 		XMMatrixTranspose(world);
 
 	// run the compute bbh
-	// TODO: re-enable
-	//computeBVH();
+	computeBVH();
 
 	// wait for the last present
 	
@@ -544,7 +543,23 @@ void Graphics::loadAssets()
 	
 	srvHandle0.Offset(1, csuDescriptorSize);
 	device->CreateShaderResourceView(obj.getIndexMappedBuffer(), &srvDesc, srvHandle0);
+	
+	// setup material index data for transfer
 
+	srvDesc.Buffer.NumElements = (UINT)obj.getNumMaterialIndices();
+	srvDesc.Buffer.StructureByteStride = sizeof(UINT);
+
+	srvHandle0.Offset(1, csuDescriptorSize);
+	device->CreateShaderResourceView(obj.getMaterialIndexMappedBuffer(), &srvDesc, srvHandle0);
+	
+	// setup material data for transfer
+
+	srvDesc.Buffer.NumElements = (UINT)obj.getNumMaterials();
+	srvDesc.Buffer.StructureByteStride = sizeof(MaterialUpload);
+
+	srvHandle0.Offset(1, csuDescriptorSize);
+	device->CreateShaderResourceView(obj.getMaterialBuffer(), &srvDesc, srvHandle0);
+	
 	// setup texture data srv
 
 	// setup buffer (uav)

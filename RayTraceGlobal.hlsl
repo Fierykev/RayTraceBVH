@@ -66,6 +66,7 @@ struct ColTri
 {
 	bool collision;
 	float distance;
+	uint index;
 	Triangle tri;
 };
 
@@ -91,8 +92,9 @@ cbuffer RAY_TRACE_BUFFER : register(b1)
 
 StructuredBuffer<Vertex> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
-StructuredBuffer<Material> mat : register(t2);
-Texture2D diffuseTex[MAX_TEXTURES] : register(t3);
+StructuredBuffer<uint> matIndices : register(t2);
+StructuredBuffer<Material> mat : register(t3);
+Texture2D diffuseTex[MAX_TEXTURES] : register(t4);
 
 RWStructuredBuffer<Node> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);

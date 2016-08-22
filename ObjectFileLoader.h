@@ -53,6 +53,23 @@ struct Material
 	Image image;
 };
 
+struct MaterialUpload
+{
+	XMFLOAT4 ambient;
+
+	XMFLOAT4 diffuse;
+
+	XMFLOAT4 specular;
+
+	int shininess;
+
+	float alpha;
+
+	bool specularb;
+
+	int texNum;
+};
+
 struct Vertex
 {
 	XMFLOAT3 position;
@@ -121,12 +138,25 @@ public:
 		return numVerts;
 	}
 
-
 	// get the number of indices in the object
 
 	const size_t ObjLoader::getNumIndices()
 	{
 		return vx_array_i.size();
+	}
+
+	// get the number of material indices in the object
+
+	const size_t ObjLoader::getNumMaterialIndices()
+	{
+		return attributes.size();
+	}
+
+	// get the number of materials in the object
+
+	const size_t ObjLoader::getNumMaterials()
+	{
+		return material.size();
 	}
 
 	// get a pointer to the verticies
@@ -162,6 +192,20 @@ public:
 	ID3D12Resource* ObjLoader::getVertexMappedBuffer()
 	{
 		return mesh_verts.Get();
+	}
+
+	// get a pointer to the mapped material data
+
+	ID3D12Resource* ObjLoader::getMaterialIndexMappedBuffer()
+	{
+		return mesh_material_index.Get();
+	}
+
+	// get a pointer to the mapped index data
+
+	ID3D12Resource* ObjLoader::getMaterialBuffer()
+	{
+		return mesh_material.Get();
 	}
 
 	// get the format of the indices
@@ -208,9 +252,11 @@ private:
 
 	Vertex* vertex_final_array = nullptr; // the final verticies organized for Direct3D to draw
 
+	MaterialUpload* material_final_array = nullptr; // the final materials organized for Direct3D upload
+
 	vector <Material> material; // the materials used on the object
 
-	vector <unsigned long> attributes;
+	vector <unsigned int> attributes;
 
 	map <XMFLOAT3, vector<VertexDataforMap>, CompareFLOAT3> vertexmap; // map for removing doubles
 
@@ -218,9 +264,13 @@ private:
 
 	// Mesh management
 
-	ComPtr<ID3D12Resource> mesh_verts, mesh_verts_upload; // our mesh	
+	ComPtr<ID3D12Resource> mesh_verts, mesh_verts_upload;
 
-	ComPtr<ID3D12Resource> mesh_indices, mesh_indices_upload; // our indices
+	ComPtr<ID3D12Resource> mesh_indices, mesh_indices_upload;
+
+	ComPtr<ID3D12Resource> mesh_material_index, mesh_material_index_upload;
+
+	ComPtr<ID3D12Resource> mesh_material, mesh_material_upload;
 
 	unsigned int mesh_num; // the number of meshes
 };

@@ -1,5 +1,5 @@
 #include <RayTraceGlobal.hlsl>
-//#include <RayTraceRender.hlsl>
+#include <RayTraceRender.hlsl>
 
 #define EPSILON .00001
 
@@ -141,6 +141,9 @@ void findCollision(Ray ray, out ColTri colTri)
 			//  update the triangle
 			if (distance != -1 && (!colTri.collision || distance < colTri.distance))
 			{
+				// set index for material reasons later
+				colTri.index = index;
+
 				// set collision to true
 				colTri.collision = true;
 
@@ -207,13 +210,19 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		
 		if (colTri.collision)
 		{
-			outputTex[gloablIndexID] = float4(colTri.distance / 100.f, 
-				colTri.distance / 100.f,
-				colTri.distance / 100.f,
-				1);
+			// get collision location
+			const float3 hitLoc =
+				ray.origin +
+				ray.direction * colTri.distance;
+
+			// record the location
+			outputTex[gloablIndexID] =
+				renderPixel(hitLoc,
+					mat[matIndices[colTri.index / 3]], colTri.tri);
 		}
 		else
 		{
+			// TODO: add in background image
 			outputTex[gloablIndexID] = float4(1, 0, 0, 1);
 		}
 	}

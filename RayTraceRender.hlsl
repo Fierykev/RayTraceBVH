@@ -9,10 +9,15 @@ float4 renderPixel(float3 pixelPoint, Material mat, Triangle tri)
 	const float2 uv = getTexCoord(tri, pixelPoint);
 
 	// get the color for that coord
-	const float4 texColor =
-		compSample.Sample(diffuseTex[mat.texNum], uv);
+	float4 texColor = float4(0, 0, 0, 1);
 
-	return mat.diffuse + texColor;
+	// get the texture if present
+	if (mat.texNum != -1)
+		texColor =
+			diffuseTex[mat.texNum].SampleLevel(
+				compSample, uv, 0);
+
+	return saturate(mat.diffuse + texColor);
 }
 
 #endif

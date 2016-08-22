@@ -1,4 +1,3 @@
-
 #include "ObjectFileLoader.h" // link to the header
 #include "Shader.h"
 #include "Helper.h"
@@ -9,14 +8,16 @@ OBJ Loading
 
 ObjLoader::ObjLoader()
 {
-	vertex_final_array = nullptr;
+
 }
 
 ObjLoader::~ObjLoader()
 {
 	// delete all data
 
-	delete vertex_final_array;
+	delete[] vertex_final_array;
+
+	delete[] material_final_array;
 
 	// remove images (different from cleaning up vector)
 	for (size_t i = 0; i < material.size(); i++)
@@ -180,10 +181,10 @@ void ObjLoader::Material_File(string filename, string matfile, unsigned long* te
 				material.at(*tex_num).texture_path = directory + ptr; // the material file
 																	  // load the file
 																	  // convert to a LPWSTR
-				
+
 				wstring filename;
 				filename.assign(material.at(*tex_num).texture_path.begin(), material.at(*tex_num).texture_path.end());
-				
+
 				// load in the texture
 				if (!material.at(*tex_num).image.loadImage(Device, filename.c_str())) // create the texture
 				{
@@ -348,7 +349,7 @@ void ObjLoader::Load_Geometry(char *filename, ID3D12Device* Device)
 
 					   // create a vertex for this area
 
-				for (int i = 0; 3 > i; i++) // loop for each triangle
+				for (int i = 0; i < 3; i++) // loop for each triangle
 				{
 					Vertex vert;
 
@@ -412,11 +413,41 @@ void ObjLoader::Load_Geometry(char *filename, ID3D12Device* Device)
 			for (VertexDataforMap vdm : i->second)
 			{
 				vertex_final_array[vdm.index].position = i->first;
-				
+
 				vertex_final_array[vdm.index].normal = vdm.normal;
 
 				vertex_final_array[vdm.index].texcoord = vdm.texcoord;
 			}
+		}
+
+		// create the final materials
+		material_final_array =
+			new MaterialUpload[getNumMaterials()];
+		unsigned int numTextures = 0;
+
+		for (int i = 0; i < material.size(); i++)
+		{
+			material_final_array[i].ambient =
+				material[i].ambient;
+
+			material_final_array[i].diffuse =
+				material[i].diffuse;
+
+			material_final_array[i].specular =
+				material[i].specular;
+
+			material_final_array[i].shininess =
+				material[i].shininess;
+
+			material_final_array[i].alpha =
+				material[i].alpha;
+
+			material_final_array[i].specularb =
+				material[i].specularb;
+
+			material_final_array[i].texNum =
+				material[i].texture_path[0] != '\0' ?
+				numTextures++ : -1;
 		}
 	}
 	else
@@ -429,9 +460,9 @@ void ObjLoader::Load(char *filename, ID3D12Device* Device)
 {
 	Load_Geometry(filename, Device);
 
-	// Now let's place the object mesh into the buffers structure
+	// place the object mesh into the buffers structure
 
-	// Setup vertex buffer
+	// setup vertex buffer
 
 	ThrowIfFailed(Device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -449,7 +480,7 @@ void ObjLoader::Load(char *filename, ID3D12Device* Device)
 		nullptr,
 		IID_PPV_ARGS(&mesh_verts_upload)));
 	
-	// Setup index buffer
+	// setup index buffer
 
 	ThrowIfFailed(Device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -466,6 +497,42 @@ void ObjLoader::Load(char *filename, ID3D12Device* Device)
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&mesh_indices_upload)));
+	
+	// setup material index buffer
+
+	ThrowIfFailed(Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * attributes.size()),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&mesh_material_index)));
+
+	ThrowIfFailed(Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(unsigned int) * attributes.size()),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&mesh_material_index_upload)));
+
+	// setup material buffer
+
+	ThrowIfFailed(Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(MaterialUpload) * getNumMaterials()),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&mesh_material)));
+
+	ThrowIfFailed(Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(MaterialUpload) * getNumMaterials()),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&mesh_material_upload)));
 }
 
 void ObjLoader::UploadData(ID3D12GraphicsCommandList* commandList)
@@ -485,7 +552,7 @@ void ObjLoader::UploadData(ID3D12GraphicsCommandList* commandList)
 	// setup verts
 
 	D3D12_SUBRESOURCE_DATA vertData = {};
-	vertData.pData = reinterpret_cast<UINT8*>(vertex_final_array);
+	vertData.pData = vertex_final_array;
 	vertData.RowPitch = sizeof(Vertex) * getNumVertices();
 	vertData.SlicePitch = vertData.RowPitch;
 
@@ -501,16 +568,46 @@ void ObjLoader::UploadData(ID3D12GraphicsCommandList* commandList)
 
 	D3D12_SUBRESOURCE_DATA indexData = {};
 	indexData.pData = &vx_array_i.at(0);
-	indexData.RowPitch = sizeof(unsigned int) * getNumVertices();
+	indexData.RowPitch = sizeof(unsigned int) * getNumIndices();
 	indexData.SlicePitch = indexData.RowPitch;
 
 	// send over the data
 	UpdateSubresources<1>(commandList,
 		mesh_indices.Get(), mesh_indices_upload.Get(), 0, 0, 1, &indexData);
-
+	
 	// resource barrier for data
 	commandList->ResourceBarrier(1,
 		&CD3DX12_RESOURCE_BARRIER::Transition(mesh_indices.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+
+	D3D12_SUBRESOURCE_DATA materialIndicesData = {};
+	materialIndicesData.pData = &attributes.at(0);
+	materialIndicesData.RowPitch = sizeof(unsigned int) * getNumMaterialIndices();
+	materialIndicesData.SlicePitch = indexData.RowPitch;
+
+	// send over the data
+	UpdateSubresources<1>(commandList,
+		mesh_material_index.Get(), mesh_material_index_upload.Get(), 0, 0, 1, &materialIndicesData);
+	
+	// resource barrier for data
+	commandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(mesh_material_index.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+
+	D3D12_SUBRESOURCE_DATA materialData = {};
+	materialData.pData = material_final_array;
+	materialData.RowPitch = sizeof(MaterialUpload) * getNumMaterials();
+	materialData.SlicePitch = indexData.RowPitch;
+
+	// send over the data
+	UpdateSubresources<1>(commandList,
+		mesh_material.Get(), mesh_material_upload.Get(), 0, 0, 1, &materialData);
+
+	// resource barrier for data
+	commandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(mesh_material.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
 }
