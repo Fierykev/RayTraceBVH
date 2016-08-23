@@ -69,6 +69,7 @@ void ObjLoader::Base_Mat(Material *mat)
 	mat->diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.f);
 	mat->specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.f);
 	mat->shininess = 0;
+	mat->opticalDensity = 0;
 	mat->alpha = 1.0f;
 	mat->specularb = false;
 }
@@ -158,6 +159,13 @@ void ObjLoader::Material_File(string filename, string matfile, unsigned long* te
 
 				sscanf_s(ptr, "%f ",							// Read floats from the line: v X Y Z
 					&material.at(*tex_num).shininess);
+			}
+			else if (ptr[0] == 'N' && ptr[1] == 'i') // refraction
+			{
+				ptr += 2;// move address up
+
+				sscanf_s(ptr, "%f ",							// Read floats from the line: v X Y Z
+					&material.at(*tex_num).opticalDensity);
 			}
 			else if (ptr[0] == 'd') // transparency
 			{
@@ -438,6 +446,9 @@ void ObjLoader::Load_Geometry(char *filename, ID3D12Device* Device)
 
 			material_final_array[i].shininess =
 				material[i].shininess;
+
+			material_final_array[i].opticalDensity =
+				material[i].opticalDensity;
 
 			material_final_array[i].alpha =
 				material[i].alpha;

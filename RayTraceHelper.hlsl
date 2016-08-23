@@ -9,13 +9,15 @@
 Get the vertex normal.
 **/
 
-float3 vertexNormaltoFaceNormal(float3 v0, float3 v1, float3 v2, float3 n0, float3 n1, float3 n2)
+float3 vertexNormaltoFaceNormal(Triangle tri)
 {
-	float3 p0 = v1 - v0;
-	float3 p1 = v2 - v0;
+	float3 p0 = tri.verts[1].position - tri.verts[0].position;
+	float3 p1 = tri.verts[2].position - tri.verts[0].position;
 	float3 facenormal = cross(p0, p1);
 
-	float3 vertexnormal = (n0 + n1 + n2) / 3.f; // average the normals
+	float3 vertexnormal = (tri.verts[0].normal
+		+ tri.verts[1].normal
+		+ tri.verts[2].normal) / 3.f; // average the normals
 	float direction = dot(facenormal, vertexnormal); // calculate the direction
 
 	return direction < .0f ? -facenormal : facenormal;
@@ -33,7 +35,6 @@ float2 getTexCoord(Triangle tri, float3 pt)
 	float3 vector2 = tri.verts[2].position - pt;
 
 	// calculate areas as well as factors
-
 	float a0 = magnitude(cross(tri.verts[0].position - tri.verts[1].position,
 		tri.verts[0].position - tri.verts[2].position)); // main triangle area
 	float a1 = magnitude(cross(vector1, vector2)) / a0; // v0 area / a0

@@ -1,11 +1,24 @@
+#ifndef RAY_TRACE_TRAVERSAL_H
+#define RAY_TRACE_TRAVERSAL_H
+
 #include <RayTraceGlobal.hlsl>
 #include <RayTraceRender.hlsl>
 
-#define EPSILON .00001
+#define EPSILON .0001
 
-#define STACK_SIZE 2<<5
+#define STACK_SIZE 2<<4
 
 // NOTE: fix performance hit from thread num
+
+/*
+Get the hit location from a ray and distance.
+*/
+
+float3 getHitLoc(Ray ray, ColTri colTri)
+{
+	return ray.origin +
+		ray.direction * colTri.distance;
+}
 
 /*
 Update the vert and pass back a new vert.
@@ -14,10 +27,10 @@ Update the vert and pass back a new vert.
 Vertex getUpdateVerts(uint index)
 {
 	Vertex updateVert;
-	updateVert.position = mul(float4(verts[index].position, 1),
+	updateVert.position = (float3)mul(float4(verts[index].position, 1),
 		worldViewProjection);
-	updateVert.normal = mul(float4(verts[index].normal, 1),
-		world);
+	updateVert.normal = mul(verts[index].normal,
+		(float3x3)worldView);
 	updateVert.texcoord = verts[index].texcoord;
 
 	return updateVert;
@@ -29,20 +42,20 @@ Find the intersection between a ray and a triangle.
 
 float rayTriangleCollision(Ray ray, Triangle tri)
 {
-	float3 edge1 = tri.verts[1].position - tri.verts[0].position;
-	float3 edge2 = tri.verts[2].position - tri.verts[0].position;
+	const float3 edge1 = tri.verts[1].position - tri.verts[0].position;
+	const float3 edge2 = tri.verts[2].position - tri.verts[0].position;
 
 	float3 tmpVar = cross(ray.direction, edge2);
-	float dx = dot(edge1, tmpVar);
+	const float dx = dot(edge1, tmpVar);
 
 	// no determinant
 	if (abs(dx) < EPSILON)
 		return -1.f;
 
 	// calc the inverse determinant
-	float idx = 1.f / dx;
+	const float idx = 1.f / dx;
 
-	float3 rayToTri = ray.origin - tri.verts[0].position;
+	const float3 rayToTri = ray.origin - tri.verts[0].position;
 
 	// compute the inverse of the 3x3 matrix
 
@@ -78,18 +91,18 @@ float rayTriangleCollision(Ray ray, Triangle tri)
 The slab method is used for collision.
 */
 
-bool rayBoxCollision(Ray ray, Box box)
+bool rayBoxCollision(Ray ray, Box box, bool collision, float distance)
 {
-	float3 deltaMin = (box.bbMin - ray.origin) * ray.invDirection;
-	float3 deltaMax = (box.bbMax - ray.origin) * ray.invDirection;
+	const float3 deltaMin = (box.bbMin - ray.origin) * ray.invDirection;
+	const float3 deltaMax = (box.bbMax - ray.origin) * ray.invDirection;
 
-	float3 minVector = min(deltaMin, deltaMax);
-	float3 maxVector = max(deltaMin, deltaMax);
+	const float3 minVector = min(deltaMin, deltaMax);
+	const float3 maxVector = max(deltaMin, deltaMax);
 
-	float minVal = max(max(minVector.x, minVector.y), minVector.z);
-	float maxVal = min(min(maxVector.x, maxVector.y), maxVector.z);
+	const float minVal = max(max(minVector.x, minVector.y), minVector.z);
+	const float maxVal = min(min(maxVector.x, maxVector.y), maxVector.z);
 
-	return 0 <= maxVal && minVal <= maxVal;
+	return 0 <= maxVal && minVal <= maxVal && (!collision || minVal <= distance);
 }
 
 void findCollision(Ray ray, out ColTri colTri)
@@ -117,7 +130,7 @@ void findCollision(Ray ray, out ColTri colTri)
 	Triangle triTmp;
 	float distance;
 
-	int index;
+	uint index;
 
 	do
 	{
@@ -132,6 +145,7 @@ void findCollision(Ray ray, out ColTri colTri)
 			index = BVHTree[nodeID].index;
 
 			// get triangle
+			[unroll(3)]
 			for (uint i = 0; i < 3; i++)
 				triTmp.verts[i] = getUpdateVerts(indices[index + i]);
 
@@ -142,7 +156,7 @@ void findCollision(Ray ray, out ColTri colTri)
 			if (distance != -1 && (!colTri.collision || distance < colTri.distance))
 			{
 				// set index for material reasons later
-				colTri.index = index;
+				colTri.index = index / 3;
 
 				// set collision to true
 				colTri.collision = true;
@@ -159,8 +173,8 @@ void findCollision(Ray ray, out ColTri colTri)
 		}
 
 		// check for collisions with children
-		leftChildCollision = rayBoxCollision(ray, BVHTree[leftChildNode].bbox);
-		rightChildCollision = rayBoxCollision(ray, BVHTree[rightChildNode].bbox);
+		leftChildCollision = rayBoxCollision(ray, BVHTree[leftChildNode].bbox, colTri.collision, colTri.distance);
+		rightChildCollision = rayBoxCollision(ray, BVHTree[rightChildNode].bbox, colTri.collision, colTri.distance);
 
 		if (!leftChildCollision && !rightChildCollision)
 		{
@@ -180,50 +194,4 @@ void findCollision(Ray ray, out ColTri colTri)
 	} while (stackIndex != -1);
 }
 
-[numthreads(32, 32, 1)]
-void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupIndex, uint3 groupID : SV_GroupID)
-{
-	// get global index ID
-	uint gloablIndexID = threadID.y * screenWidth + threadID.x;
-
-	Ray ray;
-	ColTri colTri;
-
-	uint halfWidth = screenWidth >> 1;
-	uint halfHeight = screenHeight >> 1;
-
-	// check if this pixel is within bounds
-	if (threadID.x < screenWidth && threadID.y < screenHeight)
-	{
-		// get the ray positioon
-		ray.origin = float3(((float)threadID.x - halfWidth),
-			((float)threadID.y - halfHeight), 0);
-
-		// get the ray direction
-		ray.direction = float3(0, 0, 1);
-
-		// get the inverse of the direction
-		ray.invDirection = 1.f / ray.direction;
-
-		// find the collision with a triangle
-		findCollision(ray, colTri);
-		
-		if (colTri.collision)
-		{
-			// get collision location
-			const float3 hitLoc =
-				ray.origin +
-				ray.direction * colTri.distance;
-
-			// record the location
-			outputTex[gloablIndexID] =
-				renderPixel(hitLoc,
-					mat[matIndices[colTri.index / 3]], colTri.tri);
-		}
-		else
-		{
-			// TODO: add in background image
-			outputTex[gloablIndexID] = float4(1, 0, 0, 1);
-		}
-	}
-}
+#endif

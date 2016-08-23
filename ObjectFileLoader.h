@@ -40,7 +40,9 @@ struct Material
 
 	XMFLOAT4 specular;
 
-	int shininess;
+	float shininess;
+
+	float opticalDensity;
 
 	float alpha;
 
@@ -61,7 +63,9 @@ struct MaterialUpload
 
 	XMFLOAT4 specular;
 
-	int shininess;
+	float shininess;
+
+	float opticalDensity;
 
 	float alpha;
 

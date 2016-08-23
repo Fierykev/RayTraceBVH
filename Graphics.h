@@ -42,7 +42,9 @@ private:
 		CS_RADIX_SORT_P2,
 		CS_BVH_CONSTRUCTION_P1,
 		CS_BVH_CONSTRUCTION_P2,
-		CS_RAY_TRACE_TRAVERSAL,
+		CS_RAY_TRACE_LAUNCH,
+		CS_RAY_TRACE_REFLECTION,
+		CS_RAY_TRACE_REFRACTION,
 		CS_COUNT
 	};
 
@@ -70,7 +72,8 @@ private:
 		UAV_TRANSFER_BUFFER,
 		UAV_NUM_ONES_BUFFER,
 		UAV_RADIXI_BUFFER,
-		UAV_OUTPUT_TEX,
+		UAV_REFLECT_RAY,
+		UAV_RERFRACT_RAY,
 		UAV_COUNT
 	};
 
@@ -133,6 +136,21 @@ private:
 	// model
 	ObjLoader obj;
 
+	struct Ray
+	{
+		XMFLOAT3 origin;
+		XMFLOAT3 direction;
+
+		XMFLOAT3 invDirection;
+	};
+
+	struct RAYPRESENT
+	{
+		FLOAT intensity;
+		Ray ray;
+		XMFLOAT4 color;
+	};
+
 	struct Box
 	{
 		XMFLOAT3 bbMin, bbMax;
@@ -160,7 +178,7 @@ private:
 	struct WORLD_POS
 	{
 		XMMATRIX worldViewProjection;
-		XMMATRIX world;
+		XMMATRIX worldView;
 	};
 
 	struct RAY_TRACE_BUFFER
@@ -180,8 +198,8 @@ private:
 
 	// view params
 	XMMATRIX world, view, projection, worldViewProjection;
-
-	const XMVECTOR origEye{ 0.0f, 10.0f, -100.0f };
+	
+	const XMVECTOR origEye{ 0.0f, 5.0f, -100.0f };
 	XMVECTOR eye = origEye;
 	XMVECTOR at{ 0.0f, 0.0f, 0.0f };
 	XMVECTOR up{ 0.0f, 1.f, 0.0f };

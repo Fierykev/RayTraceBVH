@@ -4,7 +4,7 @@
 
 int main()
 {
-	Graphics manager(L"RayTaceBVH", 500, 500);
+	Graphics manager(L"RayTaceBVH", 800, 800);
 
 	Window window;
 	window.createWindow((Manager*)&manager, GetModuleHandle(NULL), SW_SHOW);

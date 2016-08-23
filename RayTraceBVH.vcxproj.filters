@@ -40,11 +40,11 @@
     <Filter Include="Header Files\HLSL\Ray Tracing\Traversal">
       <UniqueIdentifier>{a0020a27-8e3b-4375-9adb-f488649e4ae5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\HLSL\Ray Tracing\TMP">
-      <UniqueIdentifier>{57bbee66-2902-4f7d-a1f1-f9a1ae56ec0a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Image">
       <UniqueIdentifier>{0a8fc937-aa12-439b-b5bc-c92b653a42ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\HLSL\Ray Tracing\Traversal\Headers">
+      <UniqueIdentifier>{80953344-5d51-465f-9f92-1786ef08b1fc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -127,14 +127,17 @@
     <FxCompile Include="RadixSortP1.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
-    <FxCompile Include="RayTraceTraversal.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
-    </FxCompile>
     <FxCompile Include="MortonCodes.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Radix Sort</Filter>
     </FxCompile>
-    <FxCompile Include="SRVTest.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\TMP</Filter>
+    <FxCompile Include="RayTraceLaunch.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
+    </FxCompile>
+    <FxCompile Include="RayTraceReflection.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
+    </FxCompile>
+    <FxCompile Include="RayTraceRefraction.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
@@ -144,11 +147,14 @@
     <None Include="RayTraceGlobal.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing</Filter>
     </None>
-    <None Include="RayTraceRender.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
-    </None>
     <None Include="RayTraceHelper.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal\Headers</Filter>
+    </None>
+    <None Include="RayTraceRender.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal\Headers</Filter>
+    </None>
+    <None Include="RayTraceTraversal.hlsl">
+      <Filter>Header Files\HLSL\Ray Tracing\Traversal\Headers</Filter>
     </None>
   </ItemGroup>
 </Project>

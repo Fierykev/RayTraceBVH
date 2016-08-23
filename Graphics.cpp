@@ -43,13 +43,14 @@ void Graphics::onUpdate()
 
 	world = XMMatrixIdentity();
 	view = XMMatrixLookAtLH(eye, at, up);
-	projection = XMMatrixPerspectiveFovLH(XM_PI / 4, 1, 1, 1000.0);
+	projection = XMMatrixPerspectiveFovLH(XM_PI / 4,
+		(float)height / width, .1, 1000.0);
 	worldViewProjection = world * view * projection;
 
 	worldPosCB->worldViewProjection =
 		XMMatrixTranspose(worldViewProjection);
-	worldPosCB->world =
-		XMMatrixTranspose(world);
+	worldPosCB->worldView =
+		XMMatrixTranspose(world * view);
 
 	// run the compute bbh
 	computeBVH();
@@ -255,7 +256,12 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/BVHConstructP2.cso", dataCS[CS_BVH_CONSTRUCTION_P2]));
 
-	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceTraversal.cso", dataCS[CS_RAY_TRACE_TRAVERSAL]));
+	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceLaunch.cso", dataCS[CS_RAY_TRACE_LAUNCH]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceReflection.cso", dataCS[CS_RAY_TRACE_REFLECTION]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceRefraction.cso", dataCS[CS_RAY_TRACE_REFRACTION]));
+	
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
@@ -275,7 +281,12 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Release/BVHConstructP2.cso", dataCS[CS_BVH_CONSTRUCTION_P2]));
 
-	ThrowIfFailed(ReadCSO("../x64/Release/RayTraceTraversal.cso", dataCS[CS_RAY_TRACE_TRAVERSAL]));
+	ThrowIfFailed(ReadCSO("../x64/Release/RayTraceLaunch.cso", dataCS[CS_RAY_TRACE_LAUNCH]));
+
+	ThrowIfFailed(ReadCSO("../x64/Release/RayTraceReflection.cso", dataCS[CS_RAY_TRACE_REFLECTION]));
+
+	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceRefraction.cso", dataCS[CS_RAY_TRACE_REFRACTION]));
+	
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif
@@ -397,10 +408,18 @@ void Graphics::loadAssets()
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(XMFLOAT4) * width * height, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(RAYPRESENT) * width * height, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
-		IID_PPV_ARGS(&bufferCS[UAV_OUTPUT_TEX])));
+		IID_PPV_ARGS(&bufferCS[UAV_REFLECT_RAY])));
+
+	ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(RAYPRESENT) * width * height, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		nullptr,
+		IID_PPV_ARGS(&bufferCS[UAV_RERFRACT_RAY])));
 
 	// zero buffer
 
@@ -510,8 +529,8 @@ void Graphics::loadAssets()
 	rayTraceCB->screenWidth = width;
 	rayTraceCB->screenHeight = height;
 	rayTraceCB->numIndices = (UINT)obj.getNumIndices();
-	rayTraceCB->sceneBBMax = XMFLOAT3(36, 42, 44);
-	rayTraceCB->sceneBBMin = XMFLOAT3(-51, -2, -43);
+	rayTraceCB->sceneBBMax = XMFLOAT3(700, 700, 700);// XMFLOAT3(36, 42, 44);
+	rayTraceCB->sceneBBMin = XMFLOAT3(-700, -700, -700);// XMFLOAT3(-51, -2, -43);
 
 	bufferCB[1]->Unmap(0, nullptr);
 
@@ -595,12 +614,19 @@ void Graphics::loadAssets()
 	uavHandle0.Offset(1, csuDescriptorSize);
 	device->CreateUnorderedAccessView(bufferCS[UAV_RADIXI_BUFFER].Get(), nullptr, &uavDesc, uavHandle0);
 
-	// create a buffer for the ray tracer output
+	// create a buffer to manage reflection ray
 	uavDesc.Buffer.NumElements = width * height;
-	uavDesc.Buffer.StructureByteStride = sizeof(XMFLOAT4);
+	uavDesc.Buffer.StructureByteStride = sizeof(RAYPRESENT);
 
 	uavHandle0.Offset(1, csuDescriptorSize);
-	device->CreateUnorderedAccessView(bufferCS[UAV_OUTPUT_TEX].Get(), nullptr, &uavDesc, uavHandle0);
+	device->CreateUnorderedAccessView(bufferCS[UAV_REFLECT_RAY].Get(), nullptr, &uavDesc, uavHandle0);
+
+	// create a buffer to manage refraction ray
+	uavDesc.Buffer.NumElements = width * height;
+	uavDesc.Buffer.StructureByteStride = sizeof(RAYPRESENT);
+
+	uavHandle0.Offset(1, csuDescriptorSize);
+	device->CreateUnorderedAccessView(bufferCS[UAV_RERFRACT_RAY].Get(), nullptr, &uavDesc, uavHandle0);
 
 	// create command list
 
@@ -759,14 +785,33 @@ void Graphics::computeBVH()
 	csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_BVHTREE].Get()));
 	
 	// run the ray tracer for init render
-	csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_TRAVERSAL].Get());
+	csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_LAUNCH].Get());
 	
 	// get number of dispatches for ray tracing
-	UINT xThreads = (UINT)ceil(width / 32.f);
-	UINT yThreads = (UINT)ceil(height / 32.f);
+	UINT xThreads = (UINT)ceil(width / 15);
+	UINT yThreads = (UINT)ceil(height / 15.f);
 
 	// launch threads
 	csCommandList->Dispatch(xThreads, yThreads, 1);
+
+	// launch reflection threads
+	for (unsigned int i = 0; i < 3; i++)
+	{
+		// change shader to reflection
+		csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_REFLECTION].Get());
+
+		csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_REFLECT_RAY].Get()));
+
+		csCommandList->Dispatch(xThreads, yThreads, 1);
+		/*
+		// change shader to refraction
+		csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_REFRACTION].Get());
+
+		csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RERFRACT_RAY].Get()));
+
+		csCommandList->Dispatch(xThreads, yThreads, 1);*/
+
+	}
 
 	// Close and execute the command list.
 	ThrowIfFailed(csCommandList->Close());

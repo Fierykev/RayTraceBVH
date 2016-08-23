@@ -65,7 +65,7 @@ bool Image::loadImage(ID3D12Device* device, const wchar_t* filename)
 }
 
 void Image::createTexture(ID3D12Device* device)
-{//DXGI_FORMAT_BC1_UNORM
+{
 	// create image
 	D3D12_RESOURCE_DESC textureDesc = {};
 	textureDesc.MipLevels = 1;
@@ -91,7 +91,7 @@ void Image::createTexture(ID3D12Device* device)
 	subresourceNum =
 		textureDesc.DepthOrArraySize * textureDesc.MipLevels;
 
-	bufferPos = intermediateSize;
+	bufferPos = uploadBufferSize;
 
 	uploadBufferSize += intermediateSize =
 		GetRequiredIntermediateSize(texture2D.Get(), 0, subresourceNum);
@@ -120,11 +120,11 @@ void Image::uploadTexture(ID3D12GraphicsCommandList* commandList)
 	textureData.SlicePitch = textureData.RowPitch * height;
 
 	// send the data over
-	UpdateSubresources(commandList, texture2D.Get(), allUploadTexture.Get(), 0, bufferPos, subresourceNum, &textureData);
+	UpdateSubresources(commandList, texture2D.Get(), allUploadTexture.Get(), bufferPos, 0, subresourceNum, &textureData);
 
 	// transition the texture for use
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture2D.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));	
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));	
 }
 
 ILubyte* Image::getData()
@@ -137,6 +137,13 @@ void setSRVBase(CD3DX12_CPU_DESCRIPTOR_HANDLE srvTexStartPass, UINT descriptorSi
 	// copy over the start pos for the texture base
 	srvTexStart = srvTexStartPass;
 	descriptorSize = descriptorSizePass;
+
+	// create the srv for this texture
+	D3D12_SHADER_RESOURCE_VIEW_DESC matDesc = {};
+	matDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	matDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	matDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	matDesc.Texture2D.MipLevels = 1;
 }
 
 void createUploadTexture(ID3D12Device* device)

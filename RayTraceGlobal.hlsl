@@ -6,6 +6,10 @@
 
 #define MAX_TEXTURES 10
 
+#define INTENSITY_MIN 0
+#define REFLECTION_DECAY 1
+#define REFRACTION_DECAY 1
+
 // shapes
 
 struct Box
@@ -19,6 +23,13 @@ struct Ray
 	float3 direction;
 
 	float3 invDirection;
+};
+
+struct RayPresent
+{
+	float intensity;
+	Ray ray;
+	float4 color;
 };
 
 // buffer structs
@@ -50,7 +61,8 @@ struct Material
 	float4 diffuse;
 	float4 specular;
 
-	int shininess;
+	float shininess;
+	float opticalDensity;
 	float alpha;
 	bool specularb;
 
@@ -73,7 +85,7 @@ struct ColTri
 cbuffer WORLD_POS : register(b0)
 {
 	matrix worldViewProjection;
-	matrix world;
+	matrix worldView;
 };
 
 cbuffer RAY_TRACE_BUFFER : register(b1)
@@ -100,7 +112,8 @@ RWStructuredBuffer<Node> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);
 RWStructuredBuffer<uint> numOnesBuffer : register(u2);
 RWStructuredBuffer<uint> radixiBuffer : register(u3);
-RWStructuredBuffer<float4> outputTex : register(u4);
+RWStructuredBuffer<RayPresent> reflectRay : register(u4);
+RWStructuredBuffer<RayPresent> refractRay : register(u5);
 
 SamplerState compSample : register(s0);
 
