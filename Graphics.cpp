@@ -201,7 +201,7 @@ void Graphics::loadPipeline()
 	// CBV / SRV / UAV
 
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-	cbvHeapDesc.NumDescriptors = numSRV;
+	cbvHeapDesc.NumDescriptors = CBV_COUNT + SRV_COUNT + UAV_COUNT;
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&csuHeap)));
@@ -298,7 +298,7 @@ void Graphics::loadAssets()
 	CD3DX12_ROOT_PARAMETER rootParameters[rpCount];
 	
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, CBV_COUNT, 0);
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, numSRV, 0);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, SRV_COUNT, 0);
 	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, UAV_COUNT, 0);
 	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, SAMPLER_COUNT, 0);
 	rootParameters[rpCB].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
@@ -359,17 +359,17 @@ void Graphics::loadAssets()
 
 	// load objects and setup object materials
 	CD3DX12_CPU_DESCRIPTOR_HANDLE srvTexHandle0(csuHeap->GetCPUDescriptorHandleForHeapStart(), CBV_COUNT + SRV_TEX, csuDescriptorSize);
-	setSRVBase(srvTexHandle0, csuDescriptorSize);
+	
 
+	Image::initDevil();
+	Image::setSRVBase(srvTexHandle0, csuDescriptorSize);
+	
 	// load the mesh file to be displayed
 	obj.Load("Obj/Test.obj", device.Get());
 
 	// setup buffers for shaders
 	const UINT numThreads = 128; // TODO: can decrease number of threads
 	/*const UINT */numGrps = (UINT)ceil(obj.getNumIndices() / (double)DATA_SIZE / 3);
-
-	// setup upload buffer
-	createUploadTexture(device.Get());
 
 	// UAV
 
@@ -580,6 +580,7 @@ void Graphics::loadAssets()
 	device->CreateShaderResourceView(obj.getMaterialBuffer(), &srvDesc, srvHandle0);
 	
 	// setup texture data srv
+	
 
 	// setup buffer (uav)
 
@@ -634,7 +635,7 @@ void Graphics::loadAssets()
 
 	// setup commands
 	// send over the sampler data
-	createSampler(device.Get(), samplerHandle0);
+	Image::createSampler(device.Get(), samplerHandle0);
 
 	// send over the object data
 
@@ -788,29 +789,28 @@ void Graphics::computeBVH()
 	csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_LAUNCH].Get());
 	
 	// get number of dispatches for ray tracing
-	UINT xThreads = (UINT)ceil(width / 15);
+	UINT xThreads = (UINT)ceil(width / 15.f);
 	UINT yThreads = (UINT)ceil(height / 15.f);
 
 	// launch threads
 	csCommandList->Dispatch(xThreads, yThreads, 1);
-
+	
 	// launch reflection threads
 	for (unsigned int i = 0; i < 3; i++)
 	{
+		// TODO: combine
+		csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_REFLECT_RAY].Get()));
+		csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RERFRACT_RAY].Get()));
+		
 		// change shader to reflection
 		csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_REFLECTION].Get());
-
-		csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_REFLECT_RAY].Get()));
 
 		csCommandList->Dispatch(xThreads, yThreads, 1);
 		/*
 		// change shader to refraction
 		csCommandList->SetPipelineState(computeStateCS[CS_RAY_TRACE_REFRACTION].Get());
 
-		csCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(bufferCS[UAV_RERFRACT_RAY].Get()));
-
 		csCommandList->Dispatch(xThreads, yThreads, 1);*/
-
 	}
 
 	// Close and execute the command list.

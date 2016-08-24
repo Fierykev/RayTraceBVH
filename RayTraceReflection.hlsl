@@ -35,7 +35,7 @@ void main(uint3 threadID : SV_DispatchThreadID)
 
 			rayTmp.ray.origin = hitLoc;
 			rayTmp.ray.direction = normalize(reflect(rayTmp.ray.direction,
-				vertexNormaltoFaceNormal(colTri.tri)));
+				vertexNormalAvg(colTri.tri)));
 			rayTmp.ray.invDirection = 1.f / rayTmp.ray.direction;
 		}
 		else // remove the rayTmp

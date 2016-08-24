@@ -4,7 +4,7 @@
 #include <RayTraceGlobal.hlsl>
 #include <RayTraceRender.hlsl>
 
-#define EPSILON .0001
+#define EPSILON .01
 
 #define STACK_SIZE 2<<4
 

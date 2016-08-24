@@ -13,7 +13,8 @@ float4 main(PSINPUT In) : SV_TARGET
 	uint index = (screenHeight - In.position.y) * screenWidth
 		+ (In.position.x - (screenWidth >> 1));
 
-return reflectRay[index].color;// *refractRay[index].color;
+	return reflectRay[index].color;
+//reflectRay[index].color;// *refractRay[index].color;
 
 	//return debugVar[0] ? float4(1, 0, 0, 1) :
 		//float4(0, 1, 0, 1);

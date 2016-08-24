@@ -4,7 +4,7 @@
 #define NUM_THREADS 128
 #define DATA_SIZE (NUM_THREADS << 1)
 
-#define MAX_TEXTURES 10
+#define MAX_TEXTURES 2
 
 #define INTENSITY_MIN 0
 #define REFLECTION_DECAY 1
@@ -106,7 +106,7 @@ StructuredBuffer<Vertex> verts : register(t0);
 StructuredBuffer<uint> indices : register(t1);
 StructuredBuffer<uint> matIndices : register(t2);
 StructuredBuffer<Material> mat : register(t3);
-Texture2D diffuseTex[MAX_TEXTURES] : register(t4);
+Texture2D diffuseTex[MAX_TEXTURES]: register(t4);
 
 RWStructuredBuffer<Node> BVHTree : register(u0);
 RWStructuredBuffer<uint> transferBuffer : register(u1);

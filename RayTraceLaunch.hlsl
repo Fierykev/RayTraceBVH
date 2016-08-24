@@ -11,15 +11,15 @@ void main(uint3 threadID : SV_DispatchThreadID)
 	RayPresent refRay, refrRay;
 	ColTri colTri;
 
-	uint halfWidth = screenWidth >> 1;
-	uint halfHeight = screenHeight >> 1;
+	float halfWidth = screenWidth >> 1;
+	float halfHeight = screenHeight >> 1;
 
 	// check if this pixel is within bounds
 	if (threadID.x < screenWidth && threadID.y < screenHeight)
 	{
 		// get the ray position
-		ray.origin = float3(((float)threadID.x - halfWidth) / 4.f,
-			((float)threadID.y - halfHeight) / 4.f, 0);
+		ray.origin = float3((threadID.x - halfWidth) / 4.f,
+			(threadID.y - halfHeight) / 4.f, 0);
 
 		// get the ray direction
 		ray.direction = float3(0, 0, 1);
@@ -50,27 +50,28 @@ void main(uint3 threadID : SV_DispatchThreadID)
 				triMat, colTri.tri
 				) * triMat.specular;
 
+			float3 normal = vertexNormalAvg(colTri.tri);
+
 			if (refRay.intensity != 0)
 			{
 				refRay.ray.origin = hitLoc;
 				refRay.ray.direction = normalize(reflect(ray.direction,
-					vertexNormaltoFaceNormal(colTri.tri)));
+					normal));
 				refRay.ray.invDirection = 1.f / refRay.ray.direction;
 			}
-
+			
 			// refraction
 			refrRay.intensity = (1.f - triMat.alpha) * REFRACTION_DECAY;
+			refrRay.color = float4(1.f, 1.f, 1.f, 1.f);
 
 			if (refrRay.intensity != 0)
 			{
 				refrRay.ray.origin = hitLoc;
-				refrRay.ray.direction = normalize(refract(refRay.ray.direction,
-					vertexNormaltoFaceNormal(colTri.tri), triMat.opticalDensity));
+				refrRay.ray.direction = 
+					normalize(refract(ray.direction,
+					normal, triMat.opticalDensity));
 				refrRay.ray.invDirection = 1.f / refrRay.ray.direction;
 			}
-
-			// TODO: add shadow
-
 		}
 		else
 		{

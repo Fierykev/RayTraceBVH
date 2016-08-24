@@ -9,7 +9,7 @@
 
 using namespace Microsoft::WRL;
 
-#define MAX_TEXTURES 10
+#define MAX_TEXTURES 2
 
 #define CAM_DELTA .1f
 
@@ -63,7 +63,7 @@ private:
 		SRV_MAT_INDEX,
 		SRV_MAT,
 		SRV_TEX,
-		SRV_COUNT
+		SRV_COUNT = SRV_TEX + MAX_TEXTURES
 	};
 
 	enum BVUAV : UINT32
@@ -85,7 +85,6 @@ private:
 
 	// static globals
 	static const UINT numFrames = 2;
-	static const UINT numSRV = SRV_COUNT + (MAX_TEXTURES - 1) + UAV_COUNT + CBV_COUNT;
 
 	// buffers
 	ComPtr<ID3D12Resource> bufferCB[CBV_COUNT], bufferCS[UAV_COUNT],

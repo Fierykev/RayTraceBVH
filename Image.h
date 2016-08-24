@@ -27,23 +27,29 @@ public:
 
 	ILubyte* getData();
 
+	static void initDevil();
+
+	static void setSRVBase(
+		CD3DX12_CPU_DESCRIPTOR_HANDLE srvTexStartPass,
+		UINT descriptorSizePass);
+
+	static void Image::createSampler(ID3D12Device* device,
+		CD3DX12_CPU_DESCRIPTOR_HANDLE iDesc);
+
 private:
 
-	ComPtr<ID3D12Resource> texture2D;
+	ComPtr<ID3D12Resource> texture2D, texture2DUpload;
 
 	int width;
 	int height;
 
-	unsigned int prevResourceNum, subresourceNum,
-		bufferPos, intermediateSize;
+	unsigned int prevResourceNum, subresourceNum;
 
 	unsigned char* data = nullptr;
+
+	static UINT descriptorSize;
+	static CD3DX12_CPU_DESCRIPTOR_HANDLE srvTexStart;
+	static UINT numResources;
 };
-
-void setSRVBase(CD3DX12_CPU_DESCRIPTOR_HANDLE srvTexStartPass, UINT descriptorSizePass);
-
-void createUploadTexture(ID3D12Device* device);
-
-void createSampler(ID3D12Device* device, CD3DX12_CPU_DESCRIPTOR_HANDLE iDesc);
 
 #endif

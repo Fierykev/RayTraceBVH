@@ -23,9 +23,10 @@ float4 renderPixel(float3 pixelPoint, Material mat, Triangle tri)
 
 	// get the texture if present
 	if (mat.texNum != -1)
-		texColor =
-			diffuseTex[mat.texNum].SampleLevel(
-				compSample, uv, 0);
+	{
+		texColor = diffuseTex[NonUniformResourceIndex(mat.texNum)].SampleLevel(
+			compSample, uv, 0);
+	}
 
 	return saturate(mat.ambient + mat.diffuse * texColor);
 }

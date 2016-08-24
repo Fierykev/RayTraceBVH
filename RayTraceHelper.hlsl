@@ -9,18 +9,13 @@
 Get the vertex normal.
 **/
 
-float3 vertexNormaltoFaceNormal(Triangle tri)
+float3 vertexNormalAvg(Triangle tri)
 {
-	float3 p0 = tri.verts[1].position - tri.verts[0].position;
-	float3 p1 = tri.verts[2].position - tri.verts[0].position;
-	float3 facenormal = cross(p0, p1);
-
-	float3 vertexnormal = (tri.verts[0].normal
+	const float3 vertexnormal = (tri.verts[0].normal
 		+ tri.verts[1].normal
-		+ tri.verts[2].normal) / 3.f; // average the normals
-	float direction = dot(facenormal, vertexnormal); // calculate the direction
+		+ tri.verts[2].normal); // sum the normals
 
-	return direction < .0f ? -facenormal : facenormal;
+	return normalize(vertexnormal);
 }
 
 /**
