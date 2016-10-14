@@ -9,10 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Header Files\Object FIle Loader">
       <UniqueIdentifier>{9905516f-6222-4adc-afa4-b16d5c99aed7}</UniqueIdentifier>
     </Filter>
@@ -45,6 +41,10 @@
     </Filter>
     <Filter Include="Header Files\HLSL\Ray Tracing\Traversal\Headers">
       <UniqueIdentifier>{80953344-5d51-465f-9f92-1786ef08b1fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -134,9 +134,6 @@
       <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
     </FxCompile>
     <FxCompile Include="RayTraceReflection.hlsl">
-      <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
-    </FxCompile>
-    <FxCompile Include="RayTraceRefraction.hlsl">
       <Filter>Header Files\HLSL\Ray Tracing\Traversal</Filter>
     </FxCompile>
   </ItemGroup>

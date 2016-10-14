@@ -18,7 +18,7 @@
 
 // Need these headers to support the array types I want
 
-#include <map>
+#include <unordered_map>
 #include <vector>
 
 #include <string>
@@ -29,6 +29,27 @@
 using namespace std;// load all std:: things
 using namespace DirectX;
 using namespace Microsoft::WRL;
+
+namespace std
+{
+	template <>
+	struct equal_to<DirectX::XMFLOAT3> : public unary_function<DirectX::XMFLOAT3, bool>
+	{
+		bool operator() (const DirectX::XMFLOAT3 &a, const DirectX::XMFLOAT3 &b) const
+		{
+			return a.x == b.x && a.y == b.y && a.z == b.z;
+		}
+	};
+
+	template<>
+	struct hash<DirectX::XMFLOAT3> : public unary_function<DirectX::XMFLOAT3, size_t>
+	{
+		std::size_t operator() (const DirectX::XMFLOAT3& a) const
+		{
+			return std::hash<float>{}(a.x) ^ std::hash<float>{}(a.y) ^ std::hash<float>{}(a.z);
+		}
+	};
+};
 
 struct Material
 {
@@ -86,28 +107,6 @@ struct VertexDataforMap
 	XMFLOAT3 normal;
 	XMFLOAT2 texcoord;
 	unsigned int index;
-};
-
-struct CompareFLOAT3
-{
-	bool operator() (const DirectX::XMFLOAT3 &a, const DirectX::XMFLOAT3 &b) const
-	{
-		if (a.x < b.x)
-			return true;
-		else if (a.x > b.x)
-			return false;
-		// must be equal check y value
-
-		if (a.y < b.y)
-			return true;
-		else if (a.y > b.y)
-			return false;
-		// must be equal check z value
-		if (a.z < b.z)
-			return true;
-
-		return false;
-	}
 };
 
 class ObjLoader
@@ -262,7 +261,7 @@ private:
 
 	vector <unsigned int> attributes;
 
-	map <XMFLOAT3, vector<VertexDataforMap>, CompareFLOAT3> vertexmap; // map for removing doubles
+	unordered_map <XMFLOAT3, vector<VertexDataforMap>> vertexmap; // map for removing doubles
 
 	unsigned int numVerts;
 

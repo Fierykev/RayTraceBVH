@@ -416,7 +416,7 @@ void ObjLoader::Load_Geometry(char *filename, ID3D12Device* Device)
 
 		vertex_final_array = new Vertex[numVerts];
 
-		for (map<XMFLOAT3, vector<VertexDataforMap>>::iterator i = vertexmap.begin(); i != vertexmap.end(); i++)
+		for (unordered_map<XMFLOAT3, vector<VertexDataforMap>>::iterator i = vertexmap.begin(); i != vertexmap.end(); i++)
 		{
 			for (VertexDataforMap vdm : i->second)
 			{
