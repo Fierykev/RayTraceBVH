@@ -13,11 +13,8 @@ float4 getBackground()
 	return float4(.5f, .5f, .5f, 1.0f);
 }
 
-float4 renderPixel(float3 pixelPoint, Material mat, Triangle tri)
+float4 renderPixel(float3 pixelPoint, Material mat, Triangle tri, float2 uv)
 {
-	// find the uv coord
-	const float2 uv = getTexCoord(tri, pixelPoint);
-
 	// get the color for that coord
 	float4 texColor = float4(1, 1, 1, 1);
 

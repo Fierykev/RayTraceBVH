@@ -8,8 +8,6 @@
 
 #define STACK_SIZE 2<<4
 
-// NOTE: fix performance hit from thread num
-
 /*
 Get the hit location from a ray and distance.
 */

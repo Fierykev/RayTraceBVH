@@ -6,23 +6,10 @@
 #define magnitude(v) sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
 
 /**
-Get the vertex normal.
-**/
-
-float3 vertexNormalAvg(Triangle tri)
-{
-	const float3 vertexnormal = (tri.verts[0].normal
-		+ tri.verts[1].normal
-		+ tri.verts[2].normal); // sum the normals
-
-	return normalize(vertexnormal);
-}
-
-/**
 Get the texture coordinate within the triangle.
 **/
 
-float2 getTexCoord(Triangle tri, float3 pt)
+void getNromalTexCoord(Triangle tri, float3 pt, out float2 texcoord, out float3 normal)
 {
 	// get the vector from the point to the triangle verts
 	float3 vector0 = tri.verts[0].position - pt;
@@ -37,9 +24,14 @@ float2 getTexCoord(Triangle tri, float3 pt)
 	float a3 = magnitude(cross(vector0, vector1)) / a0; // v2 area / a0
 
 	// find the uv coord
-	return tri.verts[0].texcoord * a1
+	texcoord = tri.verts[0].texcoord * a1
 		+ tri.verts[1].texcoord * a2
 		+ tri.verts[2].texcoord * a3;
+
+	// find the normal
+	normal = tri.verts[0].normal * a1
+		+ tri.verts[1].normal * a2
+		+ tri.verts[2].normal * a3;
 }
 
 

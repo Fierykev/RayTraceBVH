@@ -1,6 +1,8 @@
 #include <RayTraceGlobal.hlsl>
 #include <RayTraceTraversal.hlsl>
 
+#define RAY_OFFSET .001
+
 [numthreads(15, 15, 1)]
 void main(uint3 threadID : SV_DispatchThreadID)
 {
@@ -45,16 +47,20 @@ void main(uint3 threadID : SV_DispatchThreadID)
 			// reflection
 			refRay.intensity = triMat.shininess / 1000.f * REFLECTION_DECAY;
 
+			// get the current intensity
+			float2 texCoord;
+			float3 normal;
+
+			getNromalTexCoord(colTri.tri, hitLoc, texCoord, normal);
+
 			// get the color (add to ref ray for storage)
 			refRay.color = renderPixel(hitLoc,
-				triMat, colTri.tri
+				triMat, colTri.tri, texCoord
 				) * triMat.specular;
-
-			float3 normal = vertexNormalAvg(colTri.tri);
 
 			if (refRay.intensity != 0)
 			{
-				refRay.ray.origin = hitLoc;
+				refRay.ray.origin = hitLoc + normal * RAY_OFFSET;
 				refRay.ray.direction = normalize(reflect(ray.direction,
 					normal));
 				refRay.ray.invDirection = 1.f / refRay.ray.direction;
@@ -66,7 +72,7 @@ void main(uint3 threadID : SV_DispatchThreadID)
 
 			if (refrRay.intensity != 0)
 			{
-				refrRay.ray.origin = hitLoc;
+				refrRay.ray.origin = hitLoc - normal * RAY_OFFSET;
 				refrRay.ray.direction = 
 					normalize(refract(ray.direction,
 					normal, triMat.opticalDensity));

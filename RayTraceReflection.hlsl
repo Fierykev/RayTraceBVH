@@ -1,6 +1,8 @@
 #include <RayTraceGlobal.hlsl>
 #include <RayTraceTraversal.hlsl>
 
+#define RAY_OFFSET .0001
+
 [numthreads(15, 15, 1)]
 void main(uint3 threadID : SV_DispatchThreadID)
 {
@@ -25,17 +27,23 @@ void main(uint3 threadID : SV_DispatchThreadID)
 
 			Material triMat = mat[matIndices[colTri.index]];
 
+			// get the current intensity
+			float2 texCoord;
+			float3 normal;
+
+			getNromalTexCoord(colTri.tri, hitLoc, texCoord, normal);
+
 			rayTmp.color = lerp(
 				rayTmp.color,
 				renderPixel(hitLoc,
-					triMat, colTri.tri
+					triMat, colTri.tri, texCoord
 					) * triMat.specular, rayTmp.intensity);
-			// get the current intensity
+
 			rayTmp.intensity *= triMat.shininess / 1000.f * REFLECTION_DECAY;
 
-			rayTmp.ray.origin = hitLoc;
+			rayTmp.ray.origin = hitLoc + normal * RAY_OFFSET;
 			rayTmp.ray.direction = normalize(reflect(rayTmp.ray.direction,
-				vertexNormalAvg(colTri.tri)));
+				normal));
 			rayTmp.ray.invDirection = 1.f / rayTmp.ray.direction;
 		}
 		else // remove the rayTmp
