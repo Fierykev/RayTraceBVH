@@ -259,8 +259,6 @@ void Graphics::loadAssets()
 	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceLaunch.cso", dataCS[CS_RAY_TRACE_LAUNCH]));
 
 	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceReflection.cso", dataCS[CS_RAY_TRACE_REFLECTION]));
-
-	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceRefraction.cso", dataCS[CS_RAY_TRACE_REFRACTION]));
 	
 #else
 	// TODO: FILL IN LATER FOR x32
@@ -285,8 +283,6 @@ void Graphics::loadAssets()
 
 	ThrowIfFailed(ReadCSO("../x64/Release/RayTraceReflection.cso", dataCS[CS_RAY_TRACE_REFLECTION]));
 
-	ThrowIfFailed(ReadCSO("../x64/Debug/RayTraceRefraction.cso", dataCS[CS_RAY_TRACE_REFRACTION]));
-	
 #else
 	// TODO: FILL IN LATER FOR x32
 #endif

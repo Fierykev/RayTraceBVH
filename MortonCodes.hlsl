@@ -48,7 +48,7 @@ uint calcMortonCode(float3 p)
 	}
 
 	// combine codes for the output
-	return code[2] | code[1] << 1 | code[0] << 2;
+	return code[0] | code[1] << 1 | code[2] << 2;
 }
 
 [numthreads(NUM_THREADS, 1, 1)]
