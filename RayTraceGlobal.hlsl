@@ -10,6 +10,8 @@
 #define REFLECTION_DECAY 1
 #define REFRACTION_DECAY 1
 
+#define UINT_MAX 0xffffffff
+
 // shapes
 
 struct Box
@@ -36,8 +38,8 @@ struct RayPresent
 
 struct Node
 {
-	int parent;
-	int childL, childR;
+	uint parent;
+	uint childL, childR;
 
 	uint code;
 
@@ -84,8 +86,8 @@ struct ColTri
 
 cbuffer WORLD_POS : register(b0)
 {
-	matrix worldViewProjection;
-	matrix worldView;
+	matrix invWorldViewProjection;
+	matrix invWorldView;
 };
 
 cbuffer RAY_TRACE_BUFFER : register(b1)
@@ -97,7 +99,7 @@ cbuffer RAY_TRACE_BUFFER : register(b1)
 	// pack 2
 	float3 sceneBBMin;
 	uint numIndices;
-	
+
 	// pack 3
 	float3 sceneBBMax;
 };
@@ -144,7 +146,7 @@ void getRadixi(uint groupThreadID, uint3 groupID)
 	// get the data
 	if (groupThreadID == 0)
 		radixi = radixiBuffer[groupID.x];
-	
+
 	GroupMemoryBarrierWithGroupSync();
 }
 
