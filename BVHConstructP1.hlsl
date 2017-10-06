@@ -1,5 +1,7 @@
 #include <RayTraceGlobal.hlsl>
 
+#define LPR_ERR -1
+
 struct LeadingPrefixRet
 {
 	int num;
@@ -34,19 +36,12 @@ static int deBruijinLookup[] =
 	20, 11, 15, 23, 26, 16, 27, 17, 18
 };
 
-/*
-Gets number of leeading zeros by representing them
-as ones pushed to the right.  Does not give meaningful
-number but the relative output is correct.
-*/
-
-LeadingPrefixRet leadingPrefix(uint d1, uint d2, uint index1, uint index2)
+uint leadingZero(uint data)
 {
-	// use the index as a tie breaker if they are the same
-	uint data = index1 ^ index2;
+	if (data == 0)
+		return 32;
 
 	// remove non-leading zeros
-
 	data |= data >> 1;
 	data |= data >> 2;
 	data |= data >> 4;
@@ -54,10 +49,24 @@ LeadingPrefixRet leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 	data |= data >> 16;
 	data++;
 
-	LeadingPrefixRet lpr;
+	return deBruijinLookup[data * 0x076be629 >> 27];
+}
 
-	lpr.num = data ? deBruijinLookup[data * 0x076be629 >> 27] : 32;
-	lpr.index = index2;
+/*
+Gets number of leeading zeros by representing them
+as ones pushed to the right.  Does not give meaningful
+number but the relative output is correct.
+*/
+
+uint leadingPrefix(uint d1, uint d2, uint index1, uint index2)
+{
+	uint lpr = leadingZero(d1 ^ d2);
+
+	// use the index as a tie breaker if they are the same
+	if (lpr == 32)
+	{
+		lpr += leadingZero(index1 ^ index2);
+	}
 
 	return lpr;
 }
@@ -66,50 +75,46 @@ LeadingPrefixRet leadingPrefix(uint d1, uint d2, uint index1, uint index2)
 Same as leadingPrefix but does bounds checks.
 */
 
-LeadingPrefixRet leadingPrefixBounds(uint d1, uint d1Index, int index)
+int leadingPrefixBounds(uint d1, uint d1Index, int index)
 {
-	LeadingPrefixRet lprERR;
-	lprERR.num = -1;
-	lprERR.index = 0;
-
 	if (0 <= index && index < (int)numObjects)
 		return leadingPrefix(d1, BVHTree[index].code, d1Index, index);
 	else
-		return lprERR;
+		return LPR_ERR;
 }
 
 /*
 Check if a < b.
 */
 
-bool lessThanPrefix(LeadingPrefixRet a, LeadingPrefixRet b)
+bool lessThanPrefix(int a, int b)
 {
-	return (a.num < b.num) || (a.index == b.index && a.index < b.index);
+	return (a < b);
 }
 
 /*
 Find the children of the node.
 */
 
-int2 getChildren(int index)
+uint2 getChildren(int index)
 {
 	uint codeCurrent = BVHTree[index].code;
 
 	// get range direction
-	int direction = sign(leadingPrefixBounds(codeCurrent, index, index + 1).num
-		- leadingPrefixBounds(codeCurrent, index, index - 1).num);
+	int direction = lessThanPrefix(leadingPrefixBounds(codeCurrent, index, index + 1),
+		leadingPrefixBounds(codeCurrent, index, index - 1)) ? -1 : 1;
 
 	// get upper bound of length range
-	LeadingPrefixRet minLeadingZero = leadingPrefixBounds(codeCurrent, index, index - direction);
+	int minLeadingZero =
+		leadingPrefixBounds(codeCurrent, index, index - direction);
 	uint boundLen = 2;
 
-	// TODO: possibly change back to multiply by 4
 	for (;
-	lessThanPrefix(minLeadingZero, leadingPrefixBounds(
-		codeCurrent, index, index + MULTIPLY_BY_POSNEG(boundLen, direction)));
-	boundLen <<= 1) {
+		lessThanPrefix(minLeadingZero, leadingPrefixBounds(
+			codeCurrent, index, index + boundLen * direction));
+		boundLen <<= 1) {
 	}
-
+	
 	// find lower bound
 	int delta = boundLen;
 
@@ -121,14 +126,14 @@ int2 getChildren(int index)
 
 		if (lessThanPrefix(minLeadingZero,
 			leadingPrefixBounds(
-				codeCurrent, index, index + MULTIPLY_BY_POSNEG((deltaSum + delta), direction))))
+				codeCurrent, index, index + (deltaSum + delta) * direction)))
 			deltaSum += delta;
 	} while (1 < delta);
 
-	int boundStart = index + MULTIPLY_BY_POSNEG(deltaSum, direction);
+	uint boundStart = index + deltaSum * direction;
 
 	// find slice range
-	LeadingPrefixRet leadingZero = leadingPrefixBounds(codeCurrent, index, boundStart);
+	int leadingZero = leadingPrefixBounds(codeCurrent, index, boundStart);
 
 	delta = deltaSum;
 	int tmp = 0;
@@ -138,13 +143,13 @@ int2 getChildren(int index)
 		delta = (delta + 1) >> 1;
 
 		if (lessThanPrefix(leadingZero,
-			leadingPrefixBounds(codeCurrent, index, index + MULTIPLY_BY_POSNEG((tmp + delta), direction))))
+			leadingPrefixBounds(codeCurrent, index, index + (tmp + delta) * direction)))
 			tmp += delta;
 	} while (1 < delta);
 
-	int location = index + MULTIPLY_BY_POSNEG(tmp, direction) + min(direction, 0);
+	uint location = index + tmp * direction + min(direction, 0);
 
-	int2 children;
+	uint2 children;
 
 	if (min(index, boundStart) == location)
 		children.x = location;
@@ -166,7 +171,7 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 	if (threadID.x < numObjects - 1)
 	{
 		// construct the tree
-		int2 children = getChildren(threadID.x);
+		uint2 children = getChildren(threadID.x);
 
 		// set the children
 
@@ -179,5 +184,5 @@ void main(uint3 threadID : SV_DispatchThreadID, uint groupThreadID : SV_GroupInd
 		BVHTree[children.y].parent = threadID.x + numObjects;
 	}
 	else // set the parent of the root node to -1
-		BVHTree[numObjects].parent = -1;
+		BVHTree[numObjects].parent = UINT_MAX;
 }
